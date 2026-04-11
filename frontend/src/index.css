@@ -3,72 +3,133 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    background-color: #0B0B12;
-    color: #e4e1ec;
-    font-family: 'Inter', sans-serif;
+    margin: 0;
+    min-width: 320px;
     overflow-x: hidden;
+    background: #111218;
+    color: #f4f1ff;
+    font-family: "Inter", sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
   }
 }
 
 @layer components {
-  .glass-card,
-  .glass-panel {
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(149, 142, 160, 0.1);
+  .app-shell {
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #0a0a12 0%, #14151e 52%, #111218 100%);
+    color: #f4f1ff;
   }
 
-  .hero-gradient {
-    background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.15) 0%, rgba(11, 11, 18, 0) 70%);
+  .section-container {
+    width: min(100% - 2rem, 72rem);
+    margin-inline: auto;
   }
 
-  .cta-gradient,
-  .primary-gradient,
-  .gradient-button {
-    background: linear-gradient(135deg, #a078ff 0%, #3131c0 100%);
+  .surface-panel {
+    border: 1px solid rgba(58, 52, 76, 0.82);
+    background: rgba(24, 25, 34, 0.78);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+    backdrop-filter: blur(22px);
   }
 
-  .orbital-item {
+  .soft-grid {
+    background-image:
+      linear-gradient(rgba(243, 247, 244, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(243, 247, 244, 0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  .orbital-ring {
     position: absolute;
-    top: 50%;
-    left: 50%;
-  }
-  
-  .glow-primary,
-  .active-glow,
-  .orbital-glow {
-    box-shadow: 0 0 30px rgba(160, 120, 255, 0.15);
+    inset: 50% auto auto 50%;
+    border: 1px solid rgba(139, 92, 246, 0.22);
+    border-radius: 9999px;
+    transform: translate(-50%, -50%);
   }
 
-  .text-glow {
-    text-shadow: 0 0 20px rgba(208, 188, 255, 0.3);
+  .orbit-node {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(244, 241, 255, 0.12);
+    background: rgba(32, 33, 45, 0.82);
+    box-shadow: 0 18px 40px rgba(139, 92, 246, 0.18);
   }
-  
-  .header-anchor,
-  .text-tight {
-    letter-spacing: -0.04em;
+
+  .landing-float {
+    animation: landing-float 5.6s ease-in-out infinite;
+  }
+
+  .text-balance {
+    text-wrap: balance;
   }
 }
 
 @layer utilities {
   .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
   }
-  
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  
-  /* Custom scrollbar */
+
+  .material-filled {
+    font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
   ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+    width: 0.375rem;
+    height: 0.375rem;
   }
+
   ::-webkit-scrollbar-track {
-      background: transparent;
+    background: transparent;
   }
+
   ::-webkit-scrollbar-thumb {
-      background: rgba(208, 188, 255, 0.2);
-      border-radius: 10px;
+    border-radius: 9999px;
+    background: rgba(139, 92, 246, 0.34);
+  }
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(-0.25rem);
+  }
+
+  50% {
+    transform: translateY(0.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
