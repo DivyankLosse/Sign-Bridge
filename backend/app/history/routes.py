@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 from typing import List, Optional
-from app import models
 from app.database import get_db
 from app.auth.routes import get_current_user
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from bson import ObjectId
 
 router = APIRouter(
     prefix="/history",
@@ -13,14 +12,13 @@ router = APIRouter(
 )
 
 class HistoryItemResponse(BaseModel):
-    id: int
+    id: str
     input_type: str
     output_text: str
     confidence: Optional[float]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class HistoryListResponse(BaseModel):
     total: int
@@ -30,28 +28,35 @@ class HistoryListResponse(BaseModel):
 def get_history(
     skip: int = 0, 
     limit: int = 50, 
-    current_user: models.User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), 
+    db = Depends(get_db)
 ):
-    query = db.query(models.TranslationHistory).filter(models.TranslationHistory.user_id == current_user.id)
-    total = query.count()
-    items = query.order_by(models.TranslationHistory.created_at.desc()).offset(skip).limit(limit).all()
+    query = {"user_id": current_user["_id"]}
+    total = db.history.count_documents(query)
+    
+    cursor = db.history.find(query).sort("created_at", -1).skip(skip).limit(limit)
+    items = []
+    for item in cursor:
+        item["id"] = str(item["_id"])
+        items.append(item)
+        
     return {"total": total, "items": items}
 
 @router.delete("/{history_id}")
 def delete_history_item(
-    history_id: int, 
-    current_user: models.User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
+    history_id: str, 
+    current_user: dict = Depends(get_current_user), 
+    db = Depends(get_db)
 ):
-    item = db.query(models.TranslationHistory).filter(
-        models.TranslationHistory.id == history_id,
-        models.TranslationHistory.user_id == current_user.id
-    ).first()
+    if not ObjectId.is_valid(history_id):
+        raise HTTPException(status_code=400, detail="Invalid history ID")
+
+    result = db.history.delete_one({
+        "_id": ObjectId(history_id),
+        "user_id": current_user["_id"]
+    })
     
-    if not item:
+    if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="History item not found")
         
-    db.delete(item)
-    db.commit()
     return {"message": "History item deleted"}

@@ -1,25 +1,22 @@
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from pymongo import MongoClient
 from app.config import settings
+import logging
 
-SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
+MONGO_URI = getattr(settings, "MONGO_URI", "mongodb+srv://DivyankLoose:aRvTSpXrBS53TbyR@sign-bridge.jkw6tfc.mongodb.net/")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
+# Configure the single Mongo client for the app
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    # Check if a specific DB is needed. Fallback to 'sign_bridge'
+    db_name = client.get_database().name if client.get_database().name else "sign_bridge"
+    db = client[db_name]
+except Exception as e:
+    logging.error(f"Failed to connect to MongoDB: {e}")
+    raise e
 
 # Dependency for FastAPI
 def get_db():
-    db = SessionLocal()
     try:
         yield db
     finally:
-        db.close()
+        pass  # MongoClient handles pooling, no need to manually close per request
