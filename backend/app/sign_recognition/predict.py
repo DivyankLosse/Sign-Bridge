@@ -70,3 +70,60 @@ def predict_sign(base64_image):
     except Exception as e:
         print(f"Prediction error: {e}")
         return {"error": str(e), "landmarks_detected": True}
+
+from collections import Counter
+
+def predict_sign_batch(base64_frames):
+    """
+    Predict over a batch of frames and use majority voting to smooth output.
+    """
+    predictions = []
+    confidences = []
+    valid_frames = 0
+    
+    if model_loader.model is None:
+        return {"prediction": "MODEL_NOT_LOADED", "confidence": 0.0, "landmarks_detected": False}
+
+    if not base64_frames or not isinstance(base64_frames, list):
+        return {"prediction": None, "confidence": 0.0, "landmarks_detected": False}
+
+    for base64_image in base64_frames:
+        image = decode_image(base64_image)
+        if image is None:
+            continue
+            
+        landmarks = extract_landmarks(image)
+        if landmarks is None:
+            continue
+            
+        valid_frames += 1
+        input_data = landmarks.reshape(1, 1, 63) 
+        try:
+            preds = model_loader.model.predict(input_data, verbose=0)
+            class_idx = np.argmax(preds[0])
+            conf = float(np.max(preds[0]))
+            label = model_loader.labels[class_idx] if class_idx < len(model_loader.labels) else str(class_idx)
+            
+            # Only count predictions with decent confidence
+            if conf > 0.4:
+                predictions.append(label)
+                confidences.append(conf)
+        except Exception as e:
+            pass
+
+    if not predictions:
+        return {"prediction": None, "confidence": 0.0, "landmarks_detected": valid_frames > 0}
+        
+    # Majority voting
+    counter = Counter(predictions)
+    best_pred, _ = counter.most_common(1)[0]
+    
+    # Average confidence of the winning prediction
+    winning_confs = [c for p, c in zip(predictions, confidences) if p == best_pred]
+    avg_conf = sum(winning_confs) / len(winning_confs) if winning_confs else 0.0
+    
+    return {
+        "prediction": best_pred,
+        "confidence": avg_conf,
+        "landmarks_detected": True
+    }

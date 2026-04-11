@@ -1,0 +1,152 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useCamera } from '../hooks/useCamera';
+import { useWebSocket } from '../hooks/useWebSocket';
+import RecognitionOverlay from '../components/RecognitionOverlay';
+import PredictionDisplay from '../components/PredictionDisplay';
+import TranscriptPanel from '../components/TranscriptPanel';
+import { Play, Square, Settings, RefreshCw } from 'lucide-react';
+// import { useAuth } from '../context/AuthContext';
+
+const LiveRecognition = () => {
+    const [isActive, setIsActive] = useState(false);
+    const [useNlp, setUseNlp] = useState(true);
+    const [transcript, setTranscript] = useState([]);
+    const lastPredRef = useRef("");
+
+    const { videoRef, canvasRef, startCamera, stopCamera, error } = useCamera(handleFrame);
+    const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
+
+    // Frame capture callback
+    const handleFrame = (frameData) => {
+        if (isActive && isConnected) {
+            sendFrame(frameData, useNlp);
+        }
+    };
+
+    const toggleSession = () => {
+        if (isActive) {
+            stopCamera();
+            setIsActive(false);
+        } else {
+            startCamera();
+            setIsActive(true);
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (isActive) stopCamera();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Update transcript when prediction stabilizes
+    useEffect(() => {
+        if (predictionData && predictionData.corrected_prediction) {
+            const currentPred = predictionData.corrected_prediction;
+            if (currentPred !== lastPredRef.current && currentPred !== "MODEL_NOT_LOADED") {
+                // Determine if this is a new word or sentence
+                setTranscript(prev => [...prev, {
+                    text: currentPred,
+                    raw: predictionData.raw_prediction,
+                    confidence: predictionData.confidence,
+                    timestamp: new Date()
+                }]);
+                lastPredRef.current = currentPred;
+            }
+        }
+    }, [predictionData]);
+
+    return (
+        <div className="p-8 max-w-7xl mx-auto h-full flex flex-col pt-0 pb-0">
+            <header className="mb-6 flex justify-between items-center shrink-0">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                        Live Translator
+                        {isActive && (
+                            <span className="flex h-3 w-3 relative">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                            </span>
+                        )}
+                    </h1>
+                    <p className="text-gray-400">Real-time continuous sign recognition with NLP correction.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm text-gray-300">
+                        <input 
+                            type="checkbox" 
+                            checked={useNlp} 
+                            onChange={(e) => setUseNlp(e.target.checked)} 
+                            className="bg-gray-700 border-gray-600 rounded text-primary focus:ring-primary h-4 w-4"
+                        />
+                        Enable NLP Grammar
+                    </label>
+                    <button 
+                        onClick={toggleSession}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
+                            isActive ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-primary hover:bg-primary-light text-white'
+                        }`}
+                    >
+                        {isActive ? <><Square className="w-4 h-4 fill-current" /> Stop Session</> : <><Play className="w-4 h-4 fill-current" /> Start Camera</>}
+                    </button>
+                </div>
+            </header>
+
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 flex items-center gap-2 shrink-0">
+                    <span className="material-symbols-outlined">error</span>
+                    {error}
+                </div>
+            )}
+
+            <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 overflow-hidden min-h-[500px]">
+                {/* Camera View */}
+                <div className="lg:col-span-2 relative bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">
+                    {!isActive ? (
+                        <div className="text-center text-gray-500 z-10">
+                            <span className="material-symbols-outlined text-6xl mb-4 opacity-50">videocam_off</span>
+                            <p>Camera is paused. Click Start to begin.</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Hidden video element for capture */}
+                            <video 
+                                ref={videoRef} 
+                                autoPlay 
+                                playsInline 
+                                muted 
+                                className="absolute inset-0 w-full h-full object-cover hidden"
+                            />
+                            {/* Visible canvas for streaming & overlay */}
+                            <canvas 
+                                ref={canvasRef} 
+                                width={640} 
+                                height={480} 
+                                className="absolute inset-0 w-full h-full object-cover"
+                            />
+                            {/* SVG Overlay for landmarks representation or feedback */}
+                            <RecognitionOverlay active={predictionData?.landmarks_detected} />
+                            
+                            {/* Status Pill */}
+                            <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+                                <span className="text-xs font-mono text-white/80 uppercase tracking-wider">
+                                    {isConnected ? 'Connected' : 'Reconnecting...'}
+                                </span>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Panel */}
+                <div className="flex flex-col gap-4 overflow-hidden">
+                    <PredictionDisplay data={predictionData} useNlp={useNlp} />
+                    <TranscriptPanel entries={transcript} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default LiveRecognition;
