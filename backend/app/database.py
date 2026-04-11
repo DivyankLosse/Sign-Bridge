@@ -7,9 +7,7 @@ MONGO_URI = getattr(settings, "MONGO_URI", "mongodb+srv://DivyankLoose:aRvTSpXrB
 # Configure the single Mongo client for the app
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    # Check if a specific DB is needed. Fallback to 'sign_bridge'
-    db_name = client.get_database().name if client.get_database().name else "sign_bridge"
-    db = client[db_name]
+    db = client.get_default_database(default="sign_bridge")
 except Exception as e:
     logging.error(f"Failed to connect to MongoDB: {e}")
     raise e
