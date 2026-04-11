@@ -4,9 +4,15 @@ import logging
 
 MONGO_URI = getattr(settings, "MONGO_URI", "mongodb+srv://DivyankLoose:aRvTSpXrBS53TbyR@sign-bridge.jkw6tfc.mongodb.net/")
 
+import certifi
+
 # Configure the single Mongo client for the app
 try:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    client = MongoClient(
+        MONGO_URI, 
+        serverSelectionTimeoutMS=5000,
+        tlsCAFile=certifi.where()
+    )
     db = client.get_database("sign_bridge")
 except Exception as e:
     logging.error(f"Failed to connect to MongoDB: {e}")
