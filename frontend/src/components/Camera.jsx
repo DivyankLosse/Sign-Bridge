@@ -31,16 +31,6 @@ const Camera = ({ onPrediction }) => {
         }
     };
 
-    useEffect(() => {
-        let interval;
-        if (isStreaming) {
-            interval = setInterval(() => {
-                captureAndPredict();
-            }, 300); // 3-4 FPS
-        }
-        return () => clearInterval(interval);
-    }, [isStreaming]);
-
     const captureAndPredict = async () => {
         if (!videoRef.current || !canvasRef.current) return;
 
@@ -69,6 +59,17 @@ const Camera = ({ onPrediction }) => {
             console.error("Prediction error", err);
         }
     };
+
+    useEffect(() => {
+        let interval;
+        if (isStreaming) {
+            interval = setInterval(() => {
+                captureAndPredict();
+            }, 300); // 3-4 FPS
+        }
+        return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isStreaming]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>

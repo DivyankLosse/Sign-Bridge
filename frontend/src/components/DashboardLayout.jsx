@@ -7,7 +7,7 @@ const DashboardLayout = ({ children, title }) => {
     function getSavedUser() {
         try {
             return JSON.parse(localStorage.getItem('user')) || {};
-        } catch (e) {
+        } catch {
             return {};
         }
     }

@@ -10,9 +10,9 @@ const AnimationPlayer = ({ animations, words, onComplete }) => {
 
     // Reset when animations list changes
     useEffect(() => {
-        setCurrentIndex(0);
-        setIsPlaying(true); // Auto-play when new sequence arrives
-        setError(false);
+        setTimeout(() => setCurrentIndex(0), 0);
+        setTimeout(() => setIsPlaying(true), 0); // Auto-play when new sequence arrives
+        setTimeout(() => setError(false), 0);
     }, [animations]);
 
     useEffect(() => {

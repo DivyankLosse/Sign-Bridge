@@ -1,7 +1,7 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
-const Header = ({ title, user, actions }) => {
+const Header = ({ title }) => {
     // Basic standard actions if none provided
     return (
         <header className="flex-shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-white/5 px-6 py-4 bg-white/80 dark:bg-[#151022]/90 backdrop-blur-md sticky top-0 z-30 transition-colors duration-300">

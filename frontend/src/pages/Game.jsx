@@ -20,7 +20,8 @@ const Game = () => {
     };
 
     useEffect(() => {
-        startNewRound();
+        setTimeout(startNewRound, 0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -28,7 +29,7 @@ const Game = () => {
             const timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
             return () => clearInterval(timer);
         } else if (timeLeft === 0 && gameStatus === 'playing') {
-            setGameStatus('fail');
+            setTimeout(() => setGameStatus('fail'), 0);
         }
     }, [timeLeft, gameStatus]);
 
