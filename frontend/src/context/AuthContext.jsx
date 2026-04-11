@@ -8,6 +8,12 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token') || null);
   const [loading, setLoading] = useState(true);
 
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('token');
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       if (token) {
@@ -42,13 +48,6 @@ export const AuthProvider = ({ children }) => {
     // 2. Automatically log them in after
     return await login(email, password);
   };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-  };
-
   const value = {
     user,
     token,
@@ -61,7 +60,7 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

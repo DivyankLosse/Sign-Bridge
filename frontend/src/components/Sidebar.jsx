@@ -1,7 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
+    const { user, logout } = useAuth();
     return (
         <aside className="h-screen w-72 fixed left-0 border-r border-white/10 bg-surface-container-low/30 backdrop-blur-2xl flex flex-col p-6 space-y-4 z-40 hidden md:flex">
             <div className="mb-8 px-2">
@@ -46,10 +48,19 @@ const Sidebar = () => {
                     <span className="material-symbols-outlined">help</span>
                     <span className="font-medium">Support</span>
                 </a>
-                <a className="flex items-center gap-3 px-4 py-3 text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 rounded-full transition-all" href="#">
-                    <span className="material-symbols-outlined">person</span>
-                    <span className="font-medium">Account</span>
-                </a>
+                <div className="flex items-center justify-between px-3 py-3 bg-white/5 rounded-2xl mt-4 border border-white/5">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0">
+                            {user?.full_name?.charAt(0) || 'U'}
+                        </div>
+                        <div className="overflow-hidden">
+                            <p className="text-sm font-medium text-white truncate w-28">{user?.full_name || 'User'}</p>
+                        </div>
+                    </div>
+                    <button onClick={logout} className="text-gray-400 hover:text-red-400 p-1 transition-colors shrink-0" title="Logout">
+                        <span className="material-symbols-outlined text-lg">logout</span>
+                    </button>
+                </div>
             </div>
         </aside>
     );

@@ -1,124 +1,81 @@
-import React from 'react';
-import TopNavbar from '../components/TopNavbar';
+import React, { useState } from 'react';
+import { useHistory } from '../hooks/useHistory';
+import { Clock, Search, Trash2, Calendar } from 'lucide-react';
 
 const History = () => {
-    return (
-        <>
-            <TopNavbar title="Translation History" />
-            <section className="p-8 max-w-7xl mx-auto w-full">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="glass-card p-6 rounded-lg relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-primary/10"></div>
-                        <p className="text-on-surface-variant text-sm font-medium mb-1">Total Translations</p>
-                        <h3 className="text-4xl font-bold header-anchor">1,284</h3>
-                        <div className="mt-4 flex items-center text-xs text-primary font-bold">
-                            <span className="material-symbols-outlined text-sm mr-1">trending_up</span>
-                            +12% from last month
-                        </div>
-                    </div>
-                    <div className="glass-card p-6 rounded-lg relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-secondary/10"></div>
-                        <p className="text-on-surface-variant text-sm font-medium mb-1">Avg. Confidence</p>
-                        <h3 className="text-4xl font-bold header-anchor">98.2%</h3>
-                        <div className="mt-4 flex items-center text-xs text-on-surface-variant">
-                            High-fidelity AI mapping
-                        </div>
-                    </div>
-                    <div className="glass-card p-6 rounded-lg relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-tertiary/5 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:bg-tertiary/10"></div>
-                        <p className="text-on-surface-variant text-sm font-medium mb-1">Top Language</p>
-                        <h3 className="text-4xl font-bold header-anchor">ASL</h3>
-                        <div className="mt-4 flex items-center text-xs text-on-surface-variant">
-                            American Sign Language
-                        </div>
-                    </div>
-                </div>
+    const { history, loading, deleteItem } = useHistory();
+    const [searchTerm, setSearchTerm] = useState('');
 
-                {/* History Table */}
-                <div className="glass-card rounded-lg overflow-hidden border border-white/5 shadow-2xl">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="border-b border-white/5 bg-white/5">
-                                    <th className="px-8 py-5 text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">Input (Text/Sign)</th>
-                                    <th className="px-8 py-5 text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">Output (Sign/Text)</th>
-                                    <th className="px-8 py-5 text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">Confidence</th>
-                                    <th className="px-8 py-5 text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">Timestamp</th>
-                                    <th className="px-8 py-5 text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                <tr className="hover:bg-white/5 transition-colors group">
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center">
-                                                <span className="material-symbols-outlined text-sm text-primary">keyboard</span>
-                                            </div>
-                                            <span className="font-medium text-on-surface">"How can I help you today?"</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
-                                                <img alt="Sign Preview" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0anGijA13Ox7XvhJc_0nISFvHAp-P7Xiz3vbk7Zs7CWD7I9JmbyG3F-JfDShtoaWfj1JXAHNh7bky3szEvu_ax_yF9VqZzwwRUsTtnOEiDRWSbTg-bM4DWSWbQ0DWfYKR88Pkx5mVrumD37SxEh0eDfYHtqR1hbDA_IRp1EVF4E_d7542MloFzqAcFVS5xmvK8U5a3h9JxLzuWN3F_DRgyDwHaFoGRoog0d1A9S4jTuNs5G0PxcyJxFsc-8gzGvK2BGoaQbcriRr4"/>
-                                            </div>
-                                            <span className="text-sm text-on-surface-variant">ASL Visual Sequence</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                                                <div className="w-[99%] h-full bg-primary"></div>
-                                            </div>
-                                            <span className="text-xs font-bold text-primary">99%</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-sm text-on-surface-variant/70">Oct 24, 14:20</td>
-                                    <td className="px-8 py-6 text-right">
-                                        <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined">more_vert</span>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <tr className="hover:bg-white/5 transition-colors group">
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
-                                                <img alt="Camera Input" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2vAk13vekW8VdBYhpj0jX3YjMsi-aQrBj6UJPUiVV0oW_6lky-yQ_Wv-8C1rJUig99zM0XUyXITwkj_Oq4V-2PuYRfl4VXkTmpLLTbZsipe6ccNukg_MKwvQMGNRLKo2rlPLBS_2eT4zo4Bv_H8YzFg0fx9VWQagqohZhan9a-5IlHIwxWZrdRUMI0rDR5sB1xdnOhkCjCHJWqBklkk62fkhz_k8H6-2ce7D3SVUET6G88vGBx5ygXrpyVPakdeJl-UfCkthBzfDM"/>
-                                            </div>
-                                            <span className="text-sm text-on-surface-variant">Camera Feed #402</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center">
-                                                <span className="material-symbols-outlined text-sm text-secondary">description</span>
-                                            </div>
-                                            <span className="font-medium text-on-surface">"Where is the library?"</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                                                <div className="w-[94%] h-full bg-secondary"></div>
-                                            </div>
-                                            <span className="text-xs font-bold text-secondary">94%</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-sm text-on-surface-variant/70">Oct 24, 12:45</td>
-                                    <td className="px-8 py-6 text-right">
-                                        <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined">more_vert</span>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+    const filteredHistory = history.filter(item => 
+        (item.predicted_text || item.original_text || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div className="p-8 max-w-5xl mx-auto animate-fade-in">
+            <header className="mb-10">
+                <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                    <Clock className="text-primary" />
+                    Translation History
+                </h1>
+                <p className="text-gray-400">Review and manage your past translation sessions.</p>
+            </header>
+
+            <div className="mb-8">
+                <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input 
+                        type="text" 
+                        placeholder="Search translations..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    />
                 </div>
-            </section>
-        </>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                {loading ? (
+                    <div className="p-12 text-center text-gray-400">
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        Loading history...
+                    </div>
+                ) : filteredHistory.length > 0 ? (
+                    <div className="divide-y divide-white/5">
+                        {filteredHistory.map((item) => (
+                            <div key={item.id} className="p-6 hover:bg-white/5 transition-colors flex items-center justify-between group">
+                                <div>
+                                    <h3 className="text-xl font-medium text-white mb-1">
+                                        {item.predicted_text || item.original_text}
+                                    </h3>
+                                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                                        <span className="flex items-center gap-1">
+                                            <Calendar className="w-4 h-4" />
+                                            {new Date(item.created_at).toLocaleString()}
+                                        </span>
+                                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-xs font-mono">
+                                            {Math.round((item.confidence || 0) * 100)}% Match
+                                        </span>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => deleteItem(item.id)}
+                                    className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                    title="Delete record"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="p-16 text-center">
+                        <Clock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                        <h3 className="text-xl font-medium text-white mb-2">No translations found</h3>
+                        <p className="text-gray-400">Try adjusting your search or start a new translation session.</p>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 };
 

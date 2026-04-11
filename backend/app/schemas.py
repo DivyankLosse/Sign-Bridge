@@ -23,3 +23,25 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+class UserPreferences(BaseModel):
+    language: str = "en-US"
+    theme: str = "dark"
+    sign_language: str = "asl"
+    avatar_enabled: bool = False
+    
+    model_config = ConfigDict(populate_by_name=True)
+
+class UserCorrection(BaseModel):
+    id: Optional[str] = None
+    user_id: str
+    original_text: str
+    corrected_text: str
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+class UserStats(BaseModel):
+    total_translations: int
+    active_time_minutes: int
+    accuracy_rate: float

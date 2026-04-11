@@ -9,6 +9,8 @@ import TextToSign from './pages/TextToSign';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ProtectedRoute from './components/ProtectedRoute';
+import LiveRecognition from './pages/LiveRecognition';
 
 function App() {
   return (
@@ -18,9 +20,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         
-        <Route element={<DashboardLayout />}>
+        <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/translator" element={<Translator />} />
+          <Route path="/translator" element={<LiveRecognition />} />
+          <Route path="/translator-legacy" element={<Translator />} />
           <Route path="/history" element={<History />} />
           <Route path="/text-to-sign" element={<TextToSign />} />
           <Route path="/settings" element={<Settings />} />

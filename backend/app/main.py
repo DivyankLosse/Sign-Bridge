@@ -54,6 +54,14 @@ app.include_router(sign_routes.router)
 app.include_router(text_routes.router)
 app.include_router(history_routes.router)
 
+from app.nlp_correction.routes import router as nlp_router
+from app.personalization.routes import router as personalization_router
+from app.sign_recognition.websocket_handler import router as ws_router
+
+app.include_router(nlp_router)
+app.include_router(personalization_router)
+app.include_router(ws_router)
+
 from app.sign_recognition.model_loader import model_loader
 
 @app.get("/")
