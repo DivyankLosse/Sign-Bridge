@@ -1,123 +1,99 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/ui/AuthLayout';
-import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import api from '../services/api';
-import { ENDPOINTS } from '../utils/constants';
-
-const stats = [
-  { value: '2k+', label: 'pioneers' },
-  { value: '98%', label: 'target clarity' },
-  { value: '3 min', label: 'setup' },
-];
+import Button from '../components/ui/Button';
+import { useAuth } from '../context/AuthContext';
 
 export default function Signup() {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    full_name: '',
-  });
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { signup } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (event) => {
-    setFormData((current) => ({ ...current, [event.target.name]: event.target.value }));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError('');
-    setIsSubmitting(true);
+    setIsLoading(true);
 
     try {
-      await api.post(ENDPOINTS.REGISTER, formData);
-      navigate('/login');
-    } catch (signupError) {
-      setError(signupError.response?.data?.detail || 'Registration failed');
+      await signup(fullName, email, password);
+      // Successful auth routes to app console automatically
+      navigate('/translator');
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || 
+        'Registration failed. Please check your inputs and try again.'
+      );
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <AuthLayout
-      badge="Next-gen accessibility"
-      description="Create a Sign Bridge workspace for sign recognition, text-to-sign playback, and communication history with one polished interface."
-      footerLink={{ copy: 'Already have an account?', label: 'Sign in', to: '/login' }}
-      stat={stats}
-      title="Join the accessibility workflow."
+      title={
+        <>
+          Join the <span className="text-secondary">Revolution</span>
+        </>
+      }
+      description="Create your account to unlock advanced sign language translation across devices. Your digital inclusivity starts here."
+      badge="Early Access"
+      footerLink={{
+        copy: "Already have an account?",
+        to: '/login',
+        label: 'Log in',
+      }}
     >
-      <div className="mb-8 space-y-3 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
-          <span className="material-symbols-outlined material-filled text-3xl">person_add</span>
-        </div>
-        <h2 className="text-3xl font-bold text-ink">Create account</h2>
-        <p className="text-sm leading-6 text-muted">Start with a free workspace.</p>
-      </div>
-
-      {error && (
-        <div className="mb-5 rounded-lg border border-danger/40 bg-danger-soft px-4 py-3 text-sm font-medium text-danger" role="alert">
-          {error}
-        </div>
-      )}
-
-      <form className="space-y-5" noValidate onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Input
-          autoComplete="name"
-          id="signup-name"
-          label="Full name"
-          name="full_name"
-          placeholder="Alex Rivera"
+          id="fullName"
+          label="Full Name"
           type="text"
-          value={formData.full_name}
-          onChange={handleChange}
+          autoComplete="name"
+          required
+          placeholder="Alex Rivera"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
         />
         <Input
-          autoComplete="email"
-          id="signup-email"
+          id="email"
           label="Email address"
-          name="email"
-          placeholder="alex@signbridge.io"
-          required
           type="email"
-          value={formData.email}
-          onChange={handleChange}
+          autoComplete="email"
+          required
+          placeholder="alex@signbridge.io"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <Input
-          autoComplete="new-password"
-          hint="Use at least 8 characters."
-          id="signup-password"
+          id="password"
           label="Password"
-          name="password"
-          placeholder="Create a password"
-          required
           type="password"
-          value={formData.password}
-          onChange={handleChange}
+          required
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          hint="Must be at least 8 characters long."
         />
-        <Button className="w-full" disabled={isSubmitting} type="submit">
-          {isSubmitting ? 'Creating account...' : 'Create account'}
+        
+        {error && (
+          <div className="rounded-lg bg-danger/10 p-4 text-sm text-danger border border-danger/20">
+            {error}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Creating account...' : 'Create account'}
         </Button>
       </form>
-
-      <div className="my-8 flex items-center gap-4" aria-hidden="true">
-        <div className="h-px flex-1 bg-outline" />
-        <span className="text-sm text-subtle">or</span>
-        <div className="h-px flex-1 bg-outline" />
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Button className="w-full" type="button" variant="secondary">
-          <span className="material-symbols-outlined mr-2 text-xl">travel_explore</span>
-          Google
-        </Button>
-        <Button className="w-full" type="button" variant="secondary">
-          <span className="material-symbols-outlined mr-2 text-xl">account_circle</span>
-          Apple
-        </Button>
-      </div>
     </AuthLayout>
   );
 }

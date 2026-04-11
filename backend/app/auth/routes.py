@@ -16,6 +16,7 @@ router = APIRouter(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 @router.post("/register", response_model=schemas.User)
+@router.post("/signup", response_model=schemas.User)
 def register_user(user: schemas.UserCreate, db = Depends(get_db)):
     db_user = db.users.find_one({"email": user.email})
     if db_user:
