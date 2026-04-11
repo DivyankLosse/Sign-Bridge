@@ -22,7 +22,7 @@ export default function Signup() {
     try {
       await signup(fullName, email, password);
       // Successful auth routes to app console automatically
-      navigate('/translator');
+      navigate('/dashboard');
     } catch (err) {
       setError(
         err.response?.data?.detail || 

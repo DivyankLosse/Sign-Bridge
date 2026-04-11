@@ -21,7 +21,7 @@ export default function Login() {
     try {
       await login(email, password);
       // Successful auth routes to app console automatically
-      navigate('/translator');
+      navigate('/dashboard');
     } catch (err) {
       setError(
         err.response?.data?.detail || 
