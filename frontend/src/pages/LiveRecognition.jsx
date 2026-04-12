@@ -70,6 +70,15 @@ const LiveRecognition = () => {
         }
     }, [predictionData]);
 
+    // Safety Guards (Production Hardening)
+    if (systemError && !isActive) return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-surface p-6 text-center">
+            <h2 className="text-xl font-bold text-white mb-4">Error loading translator</h2>
+            <p className="text-gray-400 mb-6">{systemError}</p>
+            <button onClick={() => window.location.reload()} className="px-6 py-2 bg-primary text-white rounded-full">Retry</button>
+        </div>
+    );
+
     return (
         <div className="p-8 max-w-7xl mx-auto h-full flex flex-col pt-0 pb-0">
             <header className="mb-6 flex justify-between items-center shrink-0">
