@@ -5,9 +5,10 @@ from datetime import datetime
 # Helper to allow ObjectId as string
 class UserBase(BaseModel):
     email: EmailStr
-    full_name: Optional[str] = None
+    full_name: Optional[str] = "Signer"
 
 class UserCreate(UserBase):
+    full_name: str
     password: str
 
 class User(UserBase):
