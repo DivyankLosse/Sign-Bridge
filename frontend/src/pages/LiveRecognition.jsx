@@ -188,7 +188,6 @@ const LiveRecognition = () => {
             </div>
         </div>
     );
-    );
 };
 
 export default LiveRecognition;
