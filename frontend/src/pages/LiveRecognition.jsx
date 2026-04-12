@@ -12,19 +12,18 @@ const LiveRecognition = () => {
     const [useNlp, setUseNlp] = useState(true);
     const [transcript, setTranscript] = useState([]);
     const lastPredRef = useRef("");
-
-    const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
-    const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
-
     const [modelLoading, setModelLoading] = useState(false);
     const [systemError, setSystemError] = useState(null);
 
-    // Frame capture callback
-    const handleFrame = (frameData) => {
+    // Frame capture callback (Defined before hooks to avoid TDZ)
+    const handleFrame = useCallback((frameData) => {
         if (isActive && isConnected) {
             sendFrame(frameData, useNlp);
         }
-    };
+    }, [isActive, isConnected, useNlp]); // sendFrame will be stable
+
+    const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
+    const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
 
     const toggleSession = () => {
         if (isActive) {
