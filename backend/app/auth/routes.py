@@ -15,14 +15,19 @@ router = APIRouter(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
+import asyncio
+
 @router.post("/register", response_model=schemas.User)
 @router.post("/signup", response_model=schemas.User)
-def register_user(user: schemas.UserCreate, db = Depends(get_db)):
-    db_user = db.users.find_one({"email": user.email})
+async def register_user(user: schemas.UserCreate, db = Depends(get_db)):
+    # Offload blocking Mongo lookup to thread
+    db_user = await asyncio.to_thread(db.users.find_one, {"email": user.email})
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    hashed_password = utils.get_password_hash(user.password)
+    # Hash password in thread (computationally expensive)
+    hashed_password = await asyncio.to_thread(utils.get_password_hash, user.password)
+    
     now = datetime.now(timezone.utc)
     new_user = {
         "email": user.email,
@@ -32,14 +37,27 @@ def register_user(user: schemas.UserCreate, db = Depends(get_db)):
         "created_at": now,
         "updated_at": now
     }
-    result = db.users.insert_one(new_user)
+    
+    # Offload blocking insert
+    result = await asyncio.to_thread(db.users.insert_one, new_user)
     new_user["id"] = str(result.inserted_id)
     return new_user
 
 @router.post("/login", response_model=schemas.Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
-    user = db.users.find_one({"email": form_data.username})
-    if not user or not utils.verify_password(form_data.password, user.get("hashed_password", "")):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db = Depends(get_db)):
+    # Offload lookup
+    user = await asyncio.to_thread(db.users.find_one, {"email": form_data.username})
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Offload verify
+    is_valid = await asyncio.to_thread(utils.verify_password, form_data.password, user.get("hashed_password", ""))
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -59,6 +77,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db = Depends(get
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        # JWT decode is fast/CPU bound, usually okay in async loop if not extreme
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
@@ -67,12 +86,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db = Depends(get
     except JWTError:
         raise credentials_exception
         
-    user = db.users.find_one({"email": token_data.email})
+    # Offload lookup
+    user = await asyncio.to_thread(db.users.find_one, {"email": token_data.email})
     if user is None:
         raise credentials_exception
     user["id"] = str(user["_id"])
     return user
 
 @router.get("/me", response_model=schemas.User)
-def read_users_me(current_user: dict = Depends(get_current_user)):
+async def read_users_me(current_user: dict = Depends(get_current_user)):
     return current_user

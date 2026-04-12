@@ -13,8 +13,11 @@ const LiveRecognition = () => {
     const [transcript, setTranscript] = useState([]);
     const lastPredRef = useRef("");
 
-    const { videoRef, canvasRef, startCamera, stopCamera, error } = useCamera(handleFrame);
+    const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
     const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
+
+    const [modelLoading, setModelLoading] = useState(false);
+    const [systemError, setSystemError] = useState(null);
 
     // Frame capture callback
     const handleFrame = (frameData) => {
@@ -27,11 +30,21 @@ const LiveRecognition = () => {
         if (isActive) {
             stopCamera();
             setIsActive(false);
+            setSystemError(null);
         } else {
             startCamera();
             setIsActive(true);
         }
     };
+
+    useEffect(() => {
+        if (predictionData?.raw_prediction === "MODEL_NOT_LOADED") {
+            setSystemError("Backend is warming up: Sign recognition model is currently loading. Please wait 10-20 seconds.");
+            setModelLoading(true);
+        } else if (predictionData?.raw_prediction !== undefined) {
+            setModelLoading(false);
+        }
+    }, [predictionData]);
 
     useEffect(() => {
         return () => {
@@ -93,10 +106,16 @@ const LiveRecognition = () => {
                 </div>
             </header>
 
-            {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 flex items-center gap-2 shrink-0">
-                    <span className="material-symbols-outlined">error</span>
-                    {error}
+            {(cameraError || systemError) && (
+                <div className={`border px-4 py-3 rounded-xl mb-6 flex items-center gap-3 shrink-0 transition-colors ${
+                    systemError ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+                }`}>
+                    {modelLoading ? (
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                    ) : (
+                        <span className="material-symbols-outlined">error</span>
+                    )}
+                    <span className="text-sm font-medium">{systemError || cameraError}</span>
                 </div>
             )}
 

@@ -18,6 +18,20 @@ except Exception as e:
     logging.error(f"Failed to connect to MongoDB: {e}")
     raise e
 
+def ensure_indexes():
+    """Ensure required indexes exist for performance optimization."""
+    try:
+        # Index for faster login/signup lookups
+        db.users.create_index("email", unique=True)
+        # Index for history lookups
+        db.history.create_index([("user_id", 1), ("created_at", -1)])
+        logging.info("MongoDB indexes verified/created.")
+    except Exception as e:
+        logging.warning(f"Failed to create indexes (might already exist or have duplicates): {e}")
+
+# Call on startup
+ensure_indexes()
+
 # Dependency for FastAPI
 def get_db():
     try:

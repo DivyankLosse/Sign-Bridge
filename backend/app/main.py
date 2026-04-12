@@ -43,7 +43,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,3 +72,8 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+@app.get("/ping")
+def ping():
+    """Lightweight endpoint for keep-alive."""
+    return {"status": "alive", "timestamp": datetime.now(timezone.utc).isoformat()}

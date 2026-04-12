@@ -30,6 +30,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
     frame_buffer = []
     BUFFER_SIZE = 5 # Collect 5 frames before doing majority vote (adjustable)
     
+    is_processing = False
+    
     try:
         while True:
             data = await websocket.receive_text()
@@ -43,34 +45,44 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     
                 frame = payload.get("frame")
                 if frame:
-                    frame_buffer.append(frame)
+                    # Only add to buffer if we're not currently busy
+                    if not is_processing:
+                        frame_buffer.append(frame)
                     
-                    if len(frame_buffer) >= BUFFER_SIZE:
-                        # Process batch off the main thread
-                        result = await asyncio.to_thread(predict_sign_batch, frame_buffer)
-                        
-                        raw_pred = result.get("prediction")
-                        
-                        # Apply NLP correction if enabled
-                        corrected_text = raw_pred
-                        if raw_pred and raw_pred != "MODEL_NOT_LOADED":
-                            if payload.get("nlp_correction", True):
-                                corrected_text = await asyncio.to_thread(grammar_corrector.correct, raw_pred)
-                        
-                        response = {
-                            "type": "prediction",
-                            "raw_prediction": raw_pred,
-                            "corrected_prediction": corrected_text,
-                            "confidence": result.get("confidence", 0.0),
-                            "landmarks_detected": result.get("landmarks_detected", False)
-                        }
-                        
-                        await websocket.send_json(response)
-                        
-                        # Overlap frames to smooth prediction
-                        frame_buffer = frame_buffer[-2:] 
+                        if len(frame_buffer) >= BUFFER_SIZE:
+                            is_processing = True
+                            try:
+                                # Process batch off the main thread
+                                result = await asyncio.to_thread(predict_sign_batch, list(frame_buffer))
+                                
+                                raw_pred = result.get("prediction")
+                                
+                                # Apply NLP correction if enabled
+                                corrected_text = raw_pred
+                                if raw_pred and raw_pred != "MODEL_NOT_LOADED":
+                                    if payload.get("nlp_correction", True):
+                                        corrected_text = await asyncio.to_thread(grammar_corrector.correct, raw_pred)
+                                
+                                response = {
+                                    "type": "prediction",
+                                    "raw_prediction": raw_pred,
+                                    "corrected_prediction": corrected_text,
+                                    "confidence": result.get("confidence", 0.0),
+                                    "landmarks_detected": result.get("landmarks_detected", False)
+                                }
+                                
+                                await websocket.send_json(response)
+                                
+                                # Overlap frames to smooth prediction
+                                frame_buffer = frame_buffer[-2:] 
+                            finally:
+                                is_processing = False
+                    else:
+                        # Optional: skip specific log for production to avoid spam
+                        pass
             except Exception as e:
                 print(f"WS processing error: {e}")
                 traceback.print_exc()
+                is_processing = False # Reset on error
     except WebSocketDisconnect:
         manager.disconnect(websocket)

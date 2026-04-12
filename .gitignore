@@ -36,10 +36,13 @@ share/python-wheels/
 MANIFEST
 *.manifest
 *.spec
+# AI Preprocessing / Training (Exclusion)
+ai_training/
 Datasets/
 trained_models/
 *.pt
 *.h5
+*.tflite
 
 # Database
 papago.db
