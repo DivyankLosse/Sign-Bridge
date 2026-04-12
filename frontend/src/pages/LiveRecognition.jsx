@@ -15,15 +15,18 @@ const LiveRecognition = () => {
     const [modelLoading, setModelLoading] = useState(false);
     const [systemError, setSystemError] = useState(null);
 
-    // Frame capture callback (Defined before hooks to avoid TDZ)
+    // 1. WebSocket Hook (Provides isConnected and sendFrame)
+    const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
+
+    // 2. Frame capture callback (Uses isConnected and sendFrame)
     const handleFrame = useCallback((frameData) => {
         if (isActive && isConnected) {
             sendFrame(frameData, useNlp);
         }
-    }, [isActive, isConnected, useNlp]); // sendFrame will be stable
+    }, [isActive, isConnected, useNlp, sendFrame]);
 
+    // 3. Camera Hook (Uses handleFrame)
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
-    const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
 
     const toggleSession = () => {
         if (isActive) {
