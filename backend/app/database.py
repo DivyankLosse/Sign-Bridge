@@ -19,15 +19,23 @@ except Exception as e:
     raise e
 
 def ensure_indexes():
-    """Ensure required indexes exist for performance optimization."""
+    """Ensure required indexes exist for performance optimization in an idempotent way."""
     try:
-        # Index for faster login/signup lookups
-        db.users.create_index("email", unique=True)
-        # Index for history lookups
-        db.history.create_index([("user_id", 1), ("created_at", -1)])
-        logging.info("MongoDB indexes verified/created.")
+        # Check existing user indexes
+        user_indexes = db.users.index_information()
+        if "unique_email_idx" not in user_indexes:
+            db.users.create_index("email", unique=True, name="unique_email_idx")
+            logging.info("Created unique_email_idx for users collection.")
+        
+        # Check existing history indexes
+        history_indexes = db.history.index_information()
+        if "user_history_idx" not in history_indexes:
+            db.history.create_index([("user_id", 1), ("created_at", -1)], name="user_history_idx")
+            logging.info("Created user_history_idx for history collection.")
+            
+        logging.info("MongoDB indexes verified.")
     except Exception as e:
-        logging.warning(f"Failed to create indexes (might already exist or have duplicates): {e}")
+        logging.warning(f"Failed to verify/create indexes: {e}")
 
 # Call on startup
 ensure_indexes()

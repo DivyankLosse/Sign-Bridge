@@ -1,6 +1,5 @@
 import os
 import sys
-import numpy as np
 from app.config import settings
 
 # Debug logging to file
@@ -22,6 +21,7 @@ class ModelLoader:
         if self._is_initialized:
             return
         
+        import numpy as np
         log_debug("Lazy init_model called")
         try:
             # 1. Load Labels first
@@ -101,6 +101,7 @@ class ModelLoader:
 
     def predict(self, input_data):
         """Unified prediction interface."""
+        import numpy as np
         if not self.is_ready:
             return None
         

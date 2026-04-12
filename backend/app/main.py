@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from datetime import datetime, timezone
 from app.config import settings
 from app.auth import routes as auth_routes
 from app.sign_recognition import routes as sign_routes
@@ -66,8 +67,13 @@ from app.sign_recognition.model_loader import model_loader
 
 @app.get("/")
 def read_root():
-    is_loaded = model_loader.model is not None
-    return {"message": "Welcome to Papago Sign API", "model_loaded": is_loaded, "model_path": settings.MODEL_PATH}
+    # Use internal flag to avoid triggering lazy load on landing page
+    is_loaded = model_loader._is_initialized
+    return {
+        "message": "Welcome to Papago Sign API", 
+        "model_loaded": is_loaded, 
+        "environment": settings.ENVIRONMENT
+    }
 
 @app.get("/health")
 def health_check():
@@ -77,3 +83,9 @@ def health_check():
 def ping():
     """Lightweight endpoint for keep-alive."""
     return {"status": "alive", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=True)
