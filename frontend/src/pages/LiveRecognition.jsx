@@ -79,6 +79,13 @@ const LiveRecognition = () => {
         </div>
     );
 
+    // Debug logging for production monitoring
+    useEffect(() => {
+        console.log(`[LiveRecognition] Environment: ${import.meta.env.MODE}`);
+        console.log(`[LiveRecognition] API Base: ${import.meta.env.VITE_API_BASE_URL}`);
+        console.log(`[LiveRecognition] WebSocket: ${isConnected ? 'Connected' : 'Disconnected'}`);
+    }, [isConnected]);
+
     return (
         <div className="p-8 max-w-7xl mx-auto h-full flex flex-col pt-0 pb-0">
             <header className="mb-6 flex justify-between items-center shrink-0">
@@ -167,13 +174,20 @@ const LiveRecognition = () => {
                     )}
                 </div>
 
-                {/* Panel */}
+                {/* Panel with strict null-guards */}
                 <div className="flex flex-col gap-4 overflow-hidden">
-                    <PredictionDisplay data={predictionData} useNlp={useNlp} />
-                    <TranscriptPanel entries={transcript} />
+                    {predictionData ? (
+                        <PredictionDisplay data={predictionData} useNlp={useNlp} />
+                    ) : (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shrink-0 opacity-50">
+                            <p className="text-xs text-on-surface-variant/50 uppercase font-bold tracking-widest">Awaiting Data...</p>
+                        </div>
+                    )}
+                    <TranscriptPanel entries={transcript || []} />
                 </div>
             </div>
         </div>
+    );
     );
 };
 

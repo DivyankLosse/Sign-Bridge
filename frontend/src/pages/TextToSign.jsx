@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import TopNavbar from '../components/TopNavbar';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { API_BASE_URL } from '../utils/constants';
 
 const TextToSign = () => {
     const [text, setText] = useState("");
@@ -17,11 +16,11 @@ const TextToSign = () => {
         
         setIsLoading(true);
         try {
-            const response = await axios.post(`${API_URL}/translate/text`, { text });
+            const response = await axios.post(`${API_BASE_URL}/translate/text`, { text });
             const paths = response.data.animations;
             
             // Map paths to full URLs if needed (backend serves /static)
-            const fullUrls = paths.map(p => p.startsWith('http') ? p : `${API_URL}${p}`);
+            const fullUrls = paths.map(p => p.startsWith('http') ? p : `${API_BASE_URL}${p}`);
             
             setAnimations(fullUrls);
             setCurrentIndex(0);
