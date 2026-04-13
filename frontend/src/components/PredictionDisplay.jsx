@@ -10,7 +10,18 @@ const PredictionDisplay = ({ data, useNlp }) => {
     return (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shrink-0 shadow-lg">
             <h3 className="text-sm font-medium text-gray-400 mb-4 uppercase tracking-wider flex items-center justify-between">
-                Current Sign
+                <div className="flex items-center gap-2">
+                    Current Sign
+                    {isDetected && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                            data.mode === 'word' 
+                            ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' 
+                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                        }`}>
+                            {data.mode === 'word' ? 'WLASL WORD' : 'ASL SPELL'}
+                        </span>
+                    )}
+                </div>
                 {isDetected && (
                     <span className="flex items-center gap-1 text-xs bg-white/5 px-2 py-1 rounded border border-white/5">
                         <Activity className="w-3 h-3 text-primary" />

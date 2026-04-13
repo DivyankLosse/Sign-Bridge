@@ -12,164 +12,93 @@ def decode_image(base64_string):
     nparr = np.frombuffer(img_data, np.uint8)
     return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-def predict_sign(base64_image):
+def predict_hybrid(base64_frames, mode="AUTO", threshold=0.7):
     """
-    Main prediction function for static or single-frame signs.
-    Returns: {"prediction": str, "confidence": float, "landmarks_detected": bool}
-    """
-    image = decode_image(base64_image)
-    if image is None:
-        return {"error": "Invalid image"}
-    
-    landmarks = extract_landmarks(image)
-    if landmarks is None:
-        return {"prediction": None, "confidence": 0.0, "landmarks_detected": False}
-
-    if not model_loader.is_ready:
-        return {"prediction": "MODEL_NOT_LOADED", "confidence": 0.0, "landmarks_detected": True}
-
-    # Reshape for Sequence Model: (63,) -> (1, 1, 63)
-    # The new WLASL model expects (batch, sequence, features)
-    input_data = landmarks.reshape(1, 1, 63).astype(np.float32)
-    
-    try:
-        predictions = model_loader.predict(input_data)
-        class_idx = np.argmax(predictions[0])
-        confidence = float(np.max(predictions[0]))
-        
-        label = model_loader.labels[class_idx] if class_idx < len(model_loader.labels) else str(class_idx)
-        
-        return {
-            "prediction": label,
-            "confidence": confidence,
-            "landmarks_detected": True
-        }
-    except Exception as e:
-        import sys
-        print(f"Prediction error: {e}", file=sys.stderr)
-        return {"error": str(e), "landmarks_detected": True}
-
-def predict_sign_sequence(base64_frames):
-    """
-    Predict over a sequence of frames for dynamic signs (WLASL integration).
-    Expects a list of base64 strings.
+    Elite Hybrid Inference Logic:
+    - mode: "AUTO", "WORDS", "SPELL"
     """
     if not model_loader.is_ready:
-        return {"prediction": "MODEL_NOT_LOADED", "confidence": 0.0, "landmarks_detected": False}
+        return {"prediction": "MODEL_NOT_LOADED", "confidence": 0.0, "mode": "error"}
 
     if not base64_frames or not isinstance(base64_frames, list):
-        return {"prediction": None, "confidence": 0.0, "landmarks_detected": False}
+        return {"prediction": None, "confidence": 0.0, "mode": "error"}
 
+    # 1. Preprocess all frames for landmarks
     sequence_landmarks = []
+    last_valid_landmarks = None
     
     for base64_image in base64_frames:
         image = decode_image(base64_image)
-        if image is None:
-            # Pad with zeros if image decoding fails to maintain sequence length?
-            # Or just skip? For now, we skip and will pad at the end if needed.
-            continue
-            
-        landmarks = extract_landmarks(image)
-        if landmarks is not None:
-            sequence_landmarks.append(landmarks)
+        if image is not None:
+            landmarks = extract_landmarks(image)
+            if landmarks is not None:
+                sequence_landmarks.append(landmarks)
+                last_valid_landmarks = landmarks
+            else:
+                # If no landmarks, we pad with zeros to maintain temporal consistency?
+                # Actually, for words, zero padding is better than skipping for LSTM.
+                sequence_landmarks.append(np.zeros(63))
+        else:
+            sequence_landmarks.append(np.zeros(63))
 
-    if not sequence_landmarks:
-        return {"prediction": None, "confidence": 0.0, "landmarks_detected": False}
+    if last_valid_landmarks is None:
+        return {"prediction": None, "confidence": 0.0, "mode": mode, "landmarks_detected": False}
 
-    # Pad or truncate to match model's expected SEQUENCE_LENGTH (e.g. 30)
-    TARGET_LENGTH = 30 # Should match train_wlasl.py
-    if len(sequence_landmarks) > TARGET_LENGTH:
-        sequence_landmarks = sequence_landmarks[:TARGET_LENGTH]
-    elif len(sequence_landmarks) < TARGET_LENGTH:
-        padding = [np.zeros(63) for _ in range(TARGET_LENGTH - len(sequence_landmarks))]
-        sequence_landmarks.extend(padding)
-
-    try:
-        # Reshape to (1, 30, 63)
-        input_tensor = np.array(sequence_landmarks).reshape(1, TARGET_LENGTH, 63).astype(np.float32)
-        
-        predictions = model_loader.predict(input_tensor)
-        class_idx = np.argmax(predictions[0])
-        confidence = float(np.max(predictions[0]))
-        
-        # Filter by threshold
-        if confidence < 0.3:
-            return {"prediction": None, "confidence": confidence, "landmarks_detected": True}
-
-        label = model_loader.labels[class_idx] if class_idx < len(model_loader.labels) else str(class_idx)
-        
-        return {
-            "prediction": label,
-            "confidence": confidence,
-            "landmarks_detected": True
-        }
-    except Exception as e:
-        import sys
-        print(f"Sequence prediction error: {e}", file=sys.stderr)
-        return {"error": str(e), "landmarks_detected": True}
-
-from collections import Counter
-
-def predict_sign_batch(base64_frames):
-    """
-    Predict over a batch of frames using a single inference call.
-    """
-    if not model_loader.is_ready:
-        return {"prediction": "MODEL_NOT_LOADED", "confidence": 0.0, "landmarks_detected": False}
-
-    if not base64_frames or not isinstance(base64_frames, list):
-        return {"prediction": None, "confidence": 0.0, "landmarks_detected": False}
-
-    batch_landmarks = []
+    # 2. Sequential Inference (WLASL)
+    word_prediction = None
+    word_confidence = 0.0
     
-    for base64_image in base64_frames:
-        image = decode_image(base64_image)
-        if image is None:
-            continue
+    # We only run word model if mode is AUTO or WORDS
+    if mode in ["AUTO", "WORDS"]:
+        # Match training sequence length (20)
+        TARGET_LENGTH = 20
+        if len(sequence_landmarks) > TARGET_LENGTH:
+            wl_input = np.array(sequence_landmarks[-TARGET_LENGTH:])
+        else:
+            wl_input = np.array(sequence_landmarks)
+            padding = [np.zeros(63) for _ in range(TARGET_LENGTH - len(wl_input))]
+            wl_input = np.vstack([wl_input, padding]) if len(wl_input) > 0 else np.zeros((TARGET_LENGTH, 63))
             
-        landmarks = extract_landmarks(image)
-        if landmarks is not None:
-            batch_landmarks.append(landmarks)
+        wl_input = wl_input.reshape(1, TARGET_LENGTH, 63).astype(np.float32)
+        preds = model_loader.predict_word(wl_input)
+        
+        if preds is not None:
+            idx = np.argmax(preds[0])
+            word_confidence = float(preds[0][idx])
+            word_prediction = model_loader.word_labels[idx]
 
-    if not batch_landmarks:
-        return {"prediction": None, "confidence": 0.0, "landmarks_detected": False}
+    # 3. Decision Logic
+    final_pred = None
+    final_conf = 0.0
+    final_mode = "spell"
 
-    try:
-        # Vectorized inference: convert list of arrays to a single (N, 1, 63) tensor
-        input_tensor = np.stack(batch_landmarks).reshape(len(batch_landmarks), 1, 63).astype(np.float32)
+    # CASE A: User forced WORDS mode
+    if mode == "WORDS":
+        final_pred = word_prediction
+        final_conf = word_confidence
+        final_mode = "word"
+    
+    # CASE B: User forced SPELL mode OR AUTO fallback
+    elif mode == "SPELL" or (mode == "AUTO" and word_confidence < threshold):
+        # Run ASL 39 model on the last valid frame
+        asl_input = last_valid_landmarks.reshape(1, 63).astype(np.float32)
+        preds = model_loader.predict_spell(asl_input)
         
-        # Unified predict call for the whole batch
-        all_preds = model_loader.predict(input_tensor)
-        
-        # Process results
-        predictions = []
-        confidences = []
-        
-        for preds in all_preds:
-            class_idx = np.argmax(preds)
-            conf = float(np.max(preds))
-            if conf > 0.4: # Filter by confidence threshold
-                label = model_loader.labels[class_idx] if class_idx < len(model_loader.labels) else str(class_idx)
-                predictions.append(label)
-                confidences.append(conf)
+        if preds is not None:
+            idx = np.argmax(preds[0])
+            final_pred = model_loader.spell_labels[idx]
+            final_conf = float(preds[0][idx])
+            final_mode = "spell"
+            
+    # CASE C: AUTO success
+    else:
+        final_pred = word_prediction
+        final_conf = word_confidence
+        final_mode = "word"
 
-        if not predictions:
-             return {"prediction": None, "confidence": 0.0, "landmarks_detected": True}
-
-        # Majority voting
-        counter = Counter(predictions)
-        best_pred, _ = counter.most_common(1)[0]
-        
-        # Average confidence for the winning label
-        winning_confs = [c for p, c in zip(predictions, confidences) if p == best_pred]
-        avg_conf = sum(winning_confs) / len(winning_confs)
-        
-        return {
-            "prediction": best_pred,
-            "confidence": avg_conf,
-            "landmarks_detected": True
-        }
-    except Exception as e:
-        import sys
-        print(f"Batch prediction error: {e}", file=sys.stderr)
-        return {"error": str(e), "landmarks_detected": True}
+    return {
+        "prediction": final_pred,
+        "confidence": final_conf,
+        "mode": final_mode,
+        "landmarks_detected": True
+    }

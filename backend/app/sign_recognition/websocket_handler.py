@@ -28,7 +28,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
     await manager.connect(websocket)
     
     frame_buffer = []
-    BUFFER_SIZE = 30 # Match WLASL sequence length (approx 1.5 - 2s @ 15-20fps)
+    BUFFER_SIZE = 20 # User requested snappy 20 frames
     
     is_processing = False
     
@@ -51,14 +51,23 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     if len(frame_buffer) >= BUFFER_SIZE and not is_processing:
                         is_processing = True
                         try:
-                            # Process sequence off the main thread
-                            # We use predict_sign_sequence now
-                            from app.sign_recognition.predict import predict_sign_sequence
-                            result = await asyncio.to_thread(predict_sign_sequence, list(frame_buffer))
+                            # Process hybrid sequence off the main thread
+                            from app.sign_recognition.predict import predict_hybrid
+                            
+                            client_mode = payload.get("mode", "AUTO")
+                            client_threshold = payload.get("threshold", 0.7)
+                            
+                            result = await asyncio.to_thread(
+                                predict_hybrid, 
+                                list(frame_buffer), 
+                                mode=client_mode, 
+                                threshold=client_threshold
+                            )
                             
                             raw_pred = result.get("prediction")
+                            pred_mode = result.get("mode", "spell")
                             
-                            # Apply NLP correction if enabled
+                            # Apply NLP correction if enabled (mostly for word mode)
                             corrected_text = raw_pred
                             if raw_pred and raw_pred != "MODEL_NOT_LOADED":
                                 if payload.get("nlp_correction", True):
@@ -68,18 +77,18 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                                 "type": "prediction",
                                 "raw_prediction": raw_pred,
                                 "corrected_prediction": corrected_text,
+                                "mode": pred_mode,
                                 "confidence": result.get("confidence", 0.0),
                                 "landmarks_detected": result.get("landmarks_detected", False)
                             }
                             
                             await websocket.send_json(response)
                             
-                            # Sliding window: keep some frames for context in next prediction
-                            # e.g. keep last 15 frames
-                            frame_buffer = frame_buffer[15:] 
+                            # Sliding window: keep buffer for smoothness
+                            frame_buffer = frame_buffer[10:] 
                         finally:
                             is_processing = False
-                    elif len(frame_buffer) > 100: # Safety cap
+                    elif len(frame_buffer) > 50: # Safety cap
                         frame_buffer = frame_buffer[-BUFFER_SIZE:]
                     else:
                         # Optional: skip specific log for production to avoid spam

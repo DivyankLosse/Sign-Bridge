@@ -25,11 +25,16 @@ export const createRecognitionSocket = (token, onMessage, onError, onClose) => {
     };
 
     return {
-        sendFrame: (base64Frame, useNlp = true) => {
+        sendFrame: (base64Frame, useNlp = true, mode = "AUTO", threshold = 0.7) => {
             if (ws.readyState === WebSocket.OPEN) {
                 // Throttle sending if WebSocket buffer is backing up (e.g. slow connection)
                 if (ws.bufferedAmount < 1024 * 1024) {
-                    ws.send(JSON.stringify({ frame: base64Frame, nlp_correction: useNlp }));
+                    ws.send(JSON.stringify({ 
+                        frame: base64Frame, 
+                        nlp_correction: useNlp,
+                        mode: mode,
+                        threshold: threshold
+                    }));
                 } else {
                     console.warn('WS buffer full, dropping frame to avoid latency');
                 }

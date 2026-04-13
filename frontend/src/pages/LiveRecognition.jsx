@@ -11,9 +11,9 @@ const LiveRecognition = () => {
     const [isActive, setIsActive] = useState(false);
     const [useNlp, setUseNlp] = useState(true);
     const [transcript, setTranscript] = useState([]);
-    const lastPredRef = useRef("");
-    const [modelLoading, setModelLoading] = useState(false);
     const [systemError, setSystemError] = useState(null);
+    const [mode, setMode] = useState("AUTO");
+    const [threshold, setThreshold] = useState(0.7);
 
     // 1. WebSocket Hook (Provides isConnected and sendFrame)
     const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
@@ -21,9 +21,9 @@ const LiveRecognition = () => {
     // 2. Frame capture callback (Uses isConnected and sendFrame)
     const handleFrame = useCallback((frameData) => {
         if (isActive && isConnected) {
-            sendFrame(frameData, useNlp);
+            sendFrame(frameData, useNlp, mode, threshold);
         }
-    }, [isActive, isConnected, useNlp, sendFrame]);
+    }, [isActive, isConnected, useNlp, mode, threshold, sendFrame]);
 
     // 3. Camera Hook (Uses handleFrame)
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
@@ -93,7 +93,7 @@ const LiveRecognition = () => {
             <header className="mb-6 flex justify-between items-center shrink-0">
                 <div>
                     <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
-                        Live Translator
+                        Sign Bridge Translator
                         {isActive && (
                             <span className="flex h-3 w-3 relative">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -101,17 +101,39 @@ const LiveRecognition = () => {
                             </span>
                         )}
                     </h1>
-                    <p className="text-gray-400">Real-time continuous sign recognition with NLP correction.</p>
+                    <p className="text-gray-400">Elite Hybrid System: WLASL Words + ASL Fingerspelling.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-sm text-gray-300">
+                    {/* Mode Selector Royale */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-1 flex items-center shadow-inner">
+                        <button 
+                            onClick={() => setMode("AUTO")}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'AUTO' ? 'bg-primary text-white shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            🟢 AUTO
+                        </button>
+                        <button 
+                            onClick={() => setMode("WORDS")}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'WORDS' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            ✋ WORDS
+                        </button>
+                        <button 
+                            onClick={() => setMode("SPELL")}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'SPELL' ? 'bg-amber-600 text-white shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            🔤 SPELLING
+                        </button>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm text-gray-300 ml-2">
                         <input 
                             type="checkbox" 
                             checked={useNlp} 
                             onChange={(e) => setUseNlp(e.target.checked)} 
                             className="bg-gray-700 border-gray-600 rounded text-primary focus:ring-primary h-4 w-4"
                         />
-                        Enable NLP Grammar
+                        NLP
                     </label>
                     <button 
                         onClick={toggleSession}
@@ -119,7 +141,7 @@ const LiveRecognition = () => {
                             isActive ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-primary hover:bg-primary-light text-white'
                         }`}
                     >
-                        {isActive ? <><Square className="w-4 h-4 fill-current" /> Stop Session</> : <><Play className="w-4 h-4 fill-current" /> Start Camera</>}
+                        {isActive ? <><Square className="w-4 h-4 fill-current" /> Stop</> : <><Play className="w-4 h-4 fill-current" /> Start</>}
                     </button>
                 </div>
             </header>

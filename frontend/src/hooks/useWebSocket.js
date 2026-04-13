@@ -61,9 +61,9 @@ export const useWebSocket = (isActive) => {
 
 
 
-    const sendFrame = useCallback((frame, useNlp) => {
+    const sendFrame = useCallback((frame, useNlp, mode, threshold) => {
         if (wsRef.current && isConnected) {
-            wsRef.current.sendFrame(frame, useNlp);
+            wsRef.current.sendFrame(frame, useNlp, mode, threshold);
         }
     }, [isConnected]);
 

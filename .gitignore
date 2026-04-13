@@ -37,12 +37,13 @@ MANIFEST
 *.manifest
 *.spec
 # AI Preprocessing / Training (Exclusion)
-ai_training/
+!ai_training/*.py
 Datasets/
-trained_models/
+# Allow backend/trained_models to be pushed
+!backend/trained_models/
 *.pt
-*.h5
 *.tflite
+*.pickle
 
 # Database
 papago.db

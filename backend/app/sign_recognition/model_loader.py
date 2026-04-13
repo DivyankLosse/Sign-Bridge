@@ -9,107 +9,94 @@ def log_debug(msg):
 
 class ModelLoader:
     def __init__(self):
-        self._model = None
-        self._interpreter = None
-        self._labels = []
-        self._input_details = None
-        self._output_details = None
-        self._is_tflite = False
+        self._word_model = None
+        self._spell_model = None
+        self._word_labels = []
+        self._spell_labels = []
         self._is_initialized = False
 
     def init_model(self):
         if self._is_initialized:
             return
         
-        import numpy as np
-        log_debug("Lazy init_model called")
+        import tensorflow as tf
+        log_debug("Dual Model Loader initialization started")
+        
+        # Optimize memory
+        if hasattr(tf, 'config') and hasattr(tf.config, 'experimental'):
+            gpus = tf.config.experimental.list_physical_devices('GPU')
+            if gpus:
+                try:
+                    for gpu in gpus:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                except RuntimeError as e:
+                    log_debug(f"Memory growth error: {e}")
+
         try:
-            # 1. Load Labels first
-            if os.path.exists(settings.LABELS_PATH):
-                with open(settings.LABELS_PATH, "r") as f:
-                    self._labels = [line.strip() for line in f.readlines()]
-                log_debug(f"Labels loaded: {len(self._labels)}")
+            # 1. Load Word Model (WLASL Top 100)
+            if os.path.exists(settings.WORD_MODEL_PATH):
+                log_debug(f"Loading Word model from {settings.WORD_MODEL_PATH}")
+                self._word_model = tf.keras.models.load_model(settings.WORD_MODEL_PATH, compile=False)
+                if os.path.exists(settings.WORD_LABELS_PATH):
+                    with open(settings.WORD_LABELS_PATH, "r") as f:
+                        self._word_labels = [line.strip() for line in f.readlines()]
+                log_debug(f"SUCCESS: Word model loaded with {len(self._word_labels)} labels")
             else:
-                log_debug(f"FAILURE: Labels file not found at {settings.LABELS_PATH}")
+                log_debug(f"FAILURE: Word model not found at {settings.WORD_MODEL_PATH}")
 
-            # 2. Try loading TFLite first (Production priority)
-            if os.path.exists(settings.TFLITE_MODEL_PATH):
-                import tensorflow as tf
-                log_debug(f"Loading TFLite model from {settings.TFLITE_MODEL_PATH}")
-                self._interpreter = tf.lite.Interpreter(model_path=settings.TFLITE_MODEL_PATH)
-                self._interpreter.allocate_tensors()
-                self._input_details = self._interpreter.get_input_details()
-                self._output_details = self._interpreter.get_output_details()
-                self._is_tflite = True
-                self._is_initialized = True
-                log_debug("SUCCESS: TFLite model initialized")
-                return
-
-            # 3. Fallback to Keras H5
-            if os.path.exists(settings.MODEL_PATH):
-                import tensorflow as tf
-                log_debug(f"Loading Keras model from {settings.MODEL_PATH}")
-                # Optimize memory for low-resource environments
-                if hasattr(tf, 'config') and hasattr(tf.config, 'experimental'):
-                    gpus = tf.config.experimental.list_physical_devices('GPU')
-                    if gpus:
-                        try:
-                            for gpu in gpus:
-                                tf.config.experimental.set_memory_growth(gpu, True)
-                        except RuntimeError as e:
-                            log_debug(f"Memory growth error: {e}")
-                
-                self._model = tf.keras.models.load_model(settings.MODEL_PATH, compile=False)
-                self._is_tflite = False
-                self._is_initialized = True
-                log_debug(f"SUCCESS: Keras model loaded from {settings.MODEL_PATH}")
+            # 2. Load Spell Model (ASL 39)
+            if os.path.exists(settings.SPELL_MODEL_PATH):
+                log_debug(f"Loading Spell model from {settings.SPELL_MODEL_PATH}")
+                self._spell_model = tf.keras.models.load_model(settings.SPELL_MODEL_PATH, compile=False)
+                if os.path.exists(settings.SPELL_LABELS_PATH):
+                    with open(settings.SPELL_LABELS_PATH, "r") as f:
+                        self._spell_labels = [line.strip() for line in f.readlines()]
+                log_debug(f"SUCCESS: Spell model loaded with {len(self._spell_labels)} labels")
             else:
-                log_debug("FAILURE: No model file (H5 or TFLite) found.")
-                
+                log_debug(f"FAILURE: Spell model not found at {settings.SPELL_MODEL_PATH}")
+
+            self._is_initialized = True
         except Exception as e:
-            log_debug(f"FATAL ERROR during model initialization: {e}")
-            self._model = None
-            self._interpreter = None
+            log_debug(f"FATAL ERROR during dual model initialization: {e}")
 
     @property
-    def model(self):
+    def word_model(self):
         if not self._is_initialized:
             self.init_model()
-        return self._model
+        return self._word_model
 
     @property
-    def interpreter(self):
+    def spell_model(self):
         if not self._is_initialized:
             self.init_model()
-        return self._interpreter
+        return self._spell_model
 
     @property
-    def labels(self):
+    def word_labels(self):
         if not self._is_initialized:
             self.init_model()
-        return self._labels
+        return self._word_labels
 
     @property
-    def is_tflite(self):
-        return self._is_tflite
+    def spell_labels(self):
+        if not self._is_initialized:
+            self.init_model()
+        return self._spell_labels
 
     @property
     def is_ready(self):
         if not self._is_initialized:
             self.init_model()
-        return (self._model is not None) or (self._interpreter is not None)
+        return (self._word_model is not None) and (self._spell_model is not None)
 
-    def predict(self, input_data):
-        """Unified prediction interface."""
-        import numpy as np
-        if not self.is_ready:
+    def predict_word(self, input_data):
+        if not self.word_model:
             return None
-        
-        if self._is_tflite:
-            self._interpreter.set_tensor(self._input_details[0]['index'], input_data.astype(np.float32))
-            self._interpreter.invoke()
-            return self._interpreter.get_tensor(self._output_details[0]['index'])
-        else:
-            return self._model.predict(input_data, verbose=0)
+        return self._word_model.predict(input_data, verbose=0)
+
+    def predict_spell(self, input_data):
+        if not self.spell_model:
+            return None
+        return self._spell_model.predict(input_data, verbose=0)
 
 model_loader = ModelLoader()
