@@ -21,11 +21,14 @@ const LiveRecognition = () => {
     const [predictionData, setPredictionData] = useState(null);
     const [isConnected, setIsConnected] = useState(true);
     const [detectorStatus, setDetectorStatus] = useState('idle');
+    const [pipelineSource, setPipelineSource] = useState('server');
     const lastPredRef = useRef(null);
     const isProcessingRef = useRef(false);
     const lastRequestAtRef = useRef(0);
     const stablePredictionRef = useRef({ value: null, count: 0 });
     const missCountRef = useRef(0);
+    const handLandmarkerRef = useRef(null);
+    const handLandmarkerReadyRef = useRef(false);
     const latestTranscriptEntry = transcript[transcript.length - 1] || null;
     const activeDisplayText =
         predictionData?.corrected_prediction ||
@@ -47,7 +50,69 @@ const LiveRecognition = () => {
         }
     }, []);
 
-    const handleFrame = useCallback(async (frameData) => {
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadBrowserHandDetector = async () => {
+            try {
+                const { FilesetResolver, HandLandmarker } = await import('@mediapipe/tasks-vision');
+                const vision = await FilesetResolver.forVisionTasks(
+                    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.17/wasm'
+                );
+                const detector = await HandLandmarker.createFromOptions(vision, {
+                    baseOptions: {
+                        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+                    },
+                    numHands: 1,
+                    runningMode: 'VIDEO',
+                    minHandDetectionConfidence: 0.3,
+                    minTrackingConfidence: 0.3,
+                    minHandPresenceConfidence: 0.3,
+                });
+
+                if (!cancelled) {
+                    handLandmarkerRef.current = detector;
+                    handLandmarkerReadyRef.current = true;
+                    setPipelineSource('browser');
+                }
+            } catch (error) {
+                console.error('[LiveRecognition] Failed to load browser hand detector', error);
+                handLandmarkerRef.current = null;
+                handLandmarkerReadyRef.current = false;
+                setPipelineSource('server');
+            }
+        };
+
+        loadBrowserHandDetector();
+
+        return () => {
+            cancelled = true;
+            handLandmarkerRef.current?.close?.();
+            handLandmarkerRef.current = null;
+            handLandmarkerReadyRef.current = false;
+        };
+    }, []);
+
+    const extractBrowserLandmarks = useCallback((videoElement, timestamp) => {
+        if (!handLandmarkerReadyRef.current || !handLandmarkerRef.current || !videoElement) {
+            return undefined;
+        }
+
+        try {
+            const results = handLandmarkerRef.current.detectForVideo(videoElement, timestamp);
+            const hand = results?.landmarks?.[0];
+            if (!hand) {
+                return null;
+            }
+
+            return hand.flatMap((landmark) => [landmark.x, landmark.y, landmark.z]);
+        } catch (error) {
+            console.error('[LiveRecognition] Browser hand detection failed', error);
+            return undefined;
+        }
+    }, []);
+
+    const handleFrame = useCallback(async (frameData, meta) => {
         if (!isActive || isProcessingRef.current) return;
 
         const now = performance.now();
@@ -59,8 +124,22 @@ const LiveRecognition = () => {
         lastRequestAtRef.current = now;
         
         try {
+            const browserLandmarks = extractBrowserLandmarks(meta?.video, meta?.timestamp ?? now);
+            if (browserLandmarks === null) {
+                missCountRef.current += 1;
+                setDetectorStatus('no_hand');
+                setPredictionData(prev => prev ? { ...prev, landmarks_detected: false } : null);
+                if (missCountRef.current >= CLEAR_PREDICTION_AFTER_MISSES) {
+                    setPredictionData(null);
+                    stablePredictionRef.current = { value: null, count: 0 };
+                }
+                setIsConnected(true);
+                setSystemError(null);
+                return;
+            }
+
             const response = await axios.post(`${API_BASE_URL}/asl/predict`, {
-                features: frameData
+                features: Array.isArray(browserLandmarks) && browserLandmarks.length === 63 ? browserLandmarks : frameData
             });
             
             const data = response.data;
@@ -95,11 +174,13 @@ const LiveRecognition = () => {
 
                 missCountRef.current = 0;
                 setDetectorStatus('detected');
+                setPipelineSource(data.source || (Array.isArray(browserLandmarks) ? 'browser' : 'server'));
                 setPredictionData({
                     corrected_prediction: currentPred,
                     raw_prediction: currentPred,
-                    confidence: 1.0,
-                    landmarks_detected: true
+                    confidence: data.confidence ?? 1.0,
+                    landmarks_detected: data.landmarks_detected !== false,
+                    source: data.source || 'unknown',
                 });
                 
                 if (stablePredictionRef.current.value === currentPred) {
@@ -144,7 +225,7 @@ const LiveRecognition = () => {
         } finally {
             isProcessingRef.current = false;
         }
-    }, [isActive, saveHistoryEntry]);
+    }, [extractBrowserLandmarks, isActive, saveHistoryEntry]);
 
     // Camera Hook
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame, {
@@ -247,7 +328,7 @@ const LiveRecognition = () => {
                         {detectorStatus === 'no_hand'
                             ? 'Move one hand fully into frame'
                             : detectorStatus === 'detected'
-                                ? `Transcript entries: ${transcript.length}`
+                                ? `Transcript entries: ${transcript.length} · ${pipelineSource}`
                                 : 'Align your hand inside the camera frame'}
                     </p>
                 </div>
@@ -302,7 +383,7 @@ const LiveRecognition = () => {
                                     {detectorStatus === 'no_hand'
                                         ? 'Move one hand fully into frame'
                                         : detectorStatus === 'detected'
-                                            ? `Transcript entries: ${transcript.length}`
+                                            ? `Transcript entries: ${transcript.length} · ${pipelineSource}`
                                             : 'Align your hand inside the camera frame'}
                                 </p>
                             </div>

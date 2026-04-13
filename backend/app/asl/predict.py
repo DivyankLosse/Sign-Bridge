@@ -238,23 +238,49 @@ def get_landmarks(base64_string):
     return _detect_landmarks(frame_rgb)
 
 
+def _coerce_landmarks(raw_features):
+    if isinstance(raw_features, np.ndarray):
+        landmarks = raw_features.astype(np.float32).flatten()
+    elif isinstance(raw_features, (list, tuple)):
+        try:
+            landmarks = np.array(raw_features, dtype=np.float32).flatten()
+        except Exception:
+            return None
+    else:
+        return None
+
+    if landmarks.size != FEATURES_PER_FRAME:
+        return None
+
+    return landmarks
+
+
 def predict_sign(frame_data):
     global model, labels
     if model is None:
         return {"error": "Model not loaded"}
 
     try:
-        landmarks = get_landmarks(frame_data)
+        landmarks = _coerce_landmarks(frame_data)
+        used_client_landmarks = landmarks is not None
+        if landmarks is None:
+            landmarks = get_landmarks(frame_data)
         if landmarks is None:
             return {"prediction": "", "error": "No hands detected"}
 
         prediction_probs = model.predict(np.array([landmarks]), verbose=0)[0]
         max_index = np.argmax(prediction_probs)
+        confidence = float(prediction_probs[max_index])
 
         predicted_label = str(max_index)
         if labels and max_index < len(labels):
             predicted_label = labels[max_index]
 
-        return {"prediction": predicted_label}
+        return {
+            "prediction": predicted_label,
+            "confidence": confidence,
+            "landmarks_detected": True,
+            "source": "client-landmarks" if used_client_landmarks else "server-detector",
+        }
     except Exception as e:
         return {"error": f"Prediction failed: {e}"}

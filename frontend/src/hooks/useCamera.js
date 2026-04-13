@@ -64,7 +64,13 @@ export const useCamera = (onFrame, options = {}) => {
                     context.drawImage(videoRef.current, 0, 0, 640, 480);
                     
                     const frameData = canvasRef.current.toDataURL('image/jpeg', jpegQuality);
-                    if (onFrame) onFrame(frameData);
+                    if (onFrame) {
+                        onFrame(frameData, {
+                            video: videoRef.current,
+                            canvas: canvasRef.current,
+                            timestamp,
+                        });
+                    }
                 } catch (err) {
                     console.error("Frame processing error:", err);
                 }
