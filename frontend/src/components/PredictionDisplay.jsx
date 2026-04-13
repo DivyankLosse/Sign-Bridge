@@ -61,4 +61,4 @@ const PredictionDisplay = ({ data, useNlp }) => {
     );
 };
 
-export default React.memo(PredictionDisplay);
+export default PredictionDisplay;

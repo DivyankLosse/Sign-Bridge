@@ -25,6 +25,12 @@ const LiveRecognition = () => {
     const lastRequestAtRef = useRef(0);
     const stablePredictionRef = useRef({ value: null, count: 0 });
     const missCountRef = useRef(0);
+    const latestTranscriptEntry = transcript[transcript.length - 1] || null;
+    const activeDisplayText =
+        predictionData?.corrected_prediction ||
+        predictionData?.raw_prediction ||
+        latestTranscriptEntry?.text ||
+        '';
 
     const saveHistoryEntry = useCallback(async (content) => {
         try {
@@ -187,7 +193,7 @@ const LiveRecognition = () => {
     );
 
     return (
-        <div className="p-8 max-w-7xl mx-auto h-full flex flex-col pt-0 pb-0">
+        <div className="p-6 md:p-8 pb-24 md:pb-8 max-w-7xl mx-auto h-full flex flex-col">
             <header className="mb-6 flex justify-between items-center shrink-0">
                 <div>
                     <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
@@ -222,9 +228,23 @@ const LiveRecognition = () => {
                 </div>
             )}
 
-            <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 overflow-hidden min-h-[500px]">
+            <div className="mb-4 md:hidden">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                    <p className="text-xs text-on-surface-variant/50 uppercase font-bold tracking-widest mb-2">
+                        Live Output
+                    </p>
+                    <p className="text-2xl font-bold text-white min-h-[2rem]">
+                        {activeDisplayText || 'Waiting for gesture...'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                        Transcript entries: {transcript.length}
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 overflow-visible md:overflow-hidden min-h-[500px]">
                 {/* Camera View */}
-                <div className="lg:col-span-2 relative bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center">
+                <div className="md:col-span-2 relative bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center min-h-[320px] md:min-h-0">
                     {!isActive ? (
                         <div className="text-center text-gray-500 z-10">
                             <span className="material-symbols-outlined text-6xl mb-4 opacity-50">videocam_off</span>
@@ -259,12 +279,24 @@ const LiveRecognition = () => {
                                     {isConnected ? 'Connected' : 'Reconnecting...'}
                                 </span>
                             </div>
+
+                            <div className="absolute bottom-4 left-4 right-4 md:right-auto md:max-w-sm bg-black/65 backdrop-blur-md px-4 py-3 rounded-2xl border border-white/10">
+                                <p className="text-[10px] font-bold tracking-[0.18em] text-white/60 uppercase mb-1">
+                                    Live Output
+                                </p>
+                                <p className="text-xl md:text-2xl font-bold text-white leading-tight min-h-[1.75rem]">
+                                    {activeDisplayText || 'Waiting for gesture...'}
+                                </p>
+                                <p className="text-xs text-white/50 mt-1">
+                                    Transcript entries: {transcript.length}
+                                </p>
+                            </div>
                         </>
                     )}
                 </div>
 
                 {/* Panel with strict null-guards */}
-                <div className="flex flex-col gap-4 overflow-hidden">
+                <div className="flex flex-col gap-4 overflow-visible md:overflow-hidden min-h-[260px]">
                     {predictionData ? (
                         <PredictionDisplay data={predictionData} useNlp={false} />
                     ) : (
