@@ -2,10 +2,10 @@ import os
 import sys
 from app.config import settings
 
-# Debug logging to file
-def log_debug(msg):
-    with open("loader_debug.txt", "a") as f:
-        f.write(f"[PID {os.getpid()}] {msg}\n")
+# Standard logging to console for Render/Production visibility
+def log_status(msg):
+    timestamp = settings.datetime.now().strftime("%H:%M:%S") if hasattr(settings, 'datetime') else ""
+    print(f"[MODEL_LOADER] {msg}")
 
 class ModelLoader:
     def __init__(self):
@@ -20,7 +20,7 @@ class ModelLoader:
             return
         
         import tensorflow as tf
-        log_debug("Dual Model Loader initialization started")
+        log_status("Dual Model Loader initialization started")
         
         # Optimize memory
         if hasattr(tf, 'config') and hasattr(tf.config, 'experimental'):
@@ -30,34 +30,34 @@ class ModelLoader:
                     for gpu in gpus:
                         tf.config.experimental.set_memory_growth(gpu, True)
                 except RuntimeError as e:
-                    log_debug(f"Memory growth error: {e}")
-
+                    log_status(f"Memory growth error: {e}")
+ 
         try:
             # 1. Load Word Model (WLASL Top 100)
             if os.path.exists(settings.WORD_MODEL_PATH):
-                log_debug(f"Loading Word model from {settings.WORD_MODEL_PATH}")
+                log_status(f"Loading Word model from {settings.WORD_MODEL_PATH}")
                 self._word_model = tf.keras.models.load_model(settings.WORD_MODEL_PATH, compile=False)
                 if os.path.exists(settings.WORD_LABELS_PATH):
                     with open(settings.WORD_LABELS_PATH, "r") as f:
                         self._word_labels = [line.strip() for line in f.readlines()]
-                log_debug(f"SUCCESS: Word model loaded with {len(self._word_labels)} labels")
+                log_status(f"✅ SUCCESS: Word model loaded with {len(self._word_labels)} labels")
             else:
-                log_debug(f"FAILURE: Word model not found at {settings.WORD_MODEL_PATH}")
-
+                log_status(f"❌ FAILURE: Word model not found at {settings.WORD_MODEL_PATH}")
+ 
             # 2. Load Spell Model (ASL 39)
             if os.path.exists(settings.SPELL_MODEL_PATH):
-                log_debug(f"Loading Spell model from {settings.SPELL_MODEL_PATH}")
+                log_status(f"Loading Spell model from {settings.SPELL_MODEL_PATH}")
                 self._spell_model = tf.keras.models.load_model(settings.SPELL_MODEL_PATH, compile=False)
                 if os.path.exists(settings.SPELL_LABELS_PATH):
                     with open(settings.SPELL_LABELS_PATH, "r") as f:
                         self._spell_labels = [line.strip() for line in f.readlines()]
-                log_debug(f"SUCCESS: Spell model loaded with {len(self._spell_labels)} labels")
+                log_status(f"✅ SUCCESS: Spell model loaded with {len(self._spell_labels)} labels")
             else:
-                log_debug(f"FAILURE: Spell model not found at {settings.SPELL_MODEL_PATH}")
-
+                log_status(f"❌ FAILURE: Spell model not found at {settings.SPELL_MODEL_PATH}")
+ 
             self._is_initialized = True
         except Exception as e:
-            log_debug(f"FATAL ERROR during dual model initialization: {e}")
+            log_status(f"🔥 FATAL ERROR during dual model initialization: {e}")
 
     @property
     def word_model(self):

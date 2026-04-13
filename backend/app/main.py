@@ -14,11 +14,17 @@ app = FastAPI(title="Papago Sign API", version="1.0.0")
 
 @app.on_event("startup")
 async def startup_event():
+    # 1. Initialize Dual Recognition Models
+    from app.sign_recognition.model_loader import model_loader
+    model_loader.init_model()
+    
+    # 2. Refresh Animations Cache
     animations = refresh_animations_cache()
-    print(f"\\n{'='*40}")
-    print(f"Startup: Loaded {len(animations)} animations")
-    print(f"Looking in: {settings.ANIMATIONS_PATH}")
-    print(f"{'='*40}\\n")
+    print(f"\n{'='*40}")
+    print(f"Startup Complete")
+    print(f"Models Initialized: {model_loader._is_initialized}")
+    print(f"Animations Loaded: {len(animations)}")
+    print(f"{'='*40}\n")
 
 # Mount static files for animations
 # Mount static files for animations
