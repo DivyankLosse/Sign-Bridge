@@ -8,6 +8,9 @@ from datetime import datetime, timezone
 from app.config import settings
 from app.asl.routes import router as asl_router
 from app.auth import router as auth_router
+from app.history import router as history_router
+from app.support import router as support_router
+from app.user import router as user_router
 import app.asl.predict as asl_predict
 
 app = FastAPI(title="Papago Sign API", version="1.0.0")
@@ -47,6 +50,9 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(asl_router, prefix="/asl")
+app.include_router(history_router)
+app.include_router(user_router)
+app.include_router(support_router)
 
 @app.get("/")
 def read_root():

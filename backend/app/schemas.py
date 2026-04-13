@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Any
 from datetime import datetime
+from typing import List
 
 # Helper to allow ObjectId as string
 class UserBase(BaseModel):
@@ -51,3 +52,43 @@ class UserStats(BaseModel):
     total_translations: int
     active_time_minutes: int
     accuracy_rate: float
+
+
+class HistoryItemCreate(BaseModel):
+    type: str
+    content: str
+    confidence: float = 1.0
+    source: Optional[str] = None
+
+
+class HistoryItem(BaseModel):
+    id: str
+    user_id: str
+    type: str
+    content: str
+    confidence: float = 1.0
+    source: Optional[str] = None
+    created_at: datetime
+
+
+class HistoryListResponse(BaseModel):
+    items: List[HistoryItem]
+    total: int
+
+
+class UserProfileUpdate(BaseModel):
+    full_name: str
+
+
+class SupportRequestCreate(BaseModel):
+    name: str
+    email: EmailStr
+    message: str
+
+
+class SupportRequest(BaseModel):
+    id: str
+    name: str
+    email: EmailStr
+    message: str
+    created_at: datetime

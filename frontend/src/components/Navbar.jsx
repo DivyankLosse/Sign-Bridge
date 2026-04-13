@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogOut, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
     const navigate = useNavigate();
-    const token = localStorage.getItem('token');
+    const { isAuthenticated, logout } = useAuth();
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
+        logout();
         navigate('/login');
     };
 
@@ -30,7 +31,7 @@ const Navbar = () => {
                     <Link to="/" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Home</Link>
                     <a href="#features" style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}>Features</a>
 
-                    {token ? (
+                    {isAuthenticated ? (
                         <>
                             <Link to="/dashboard" style={{ color: 'var(--text-primary)', textDecoration: 'none' }}>Dashboard</Link>
                             <button

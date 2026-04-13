@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import History from './pages/History';
 import TextToSign from './pages/TextToSign';
 import Settings from './pages/Settings';
+import Support from './pages/Support';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -24,12 +25,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           
-          <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+            <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/learn" element={<LearnPage />} />
             <Route path="/translator" element={<LiveRecognition />} />
             <Route path="/history" element={<History />} />
             <Route path="/text-to-sign" element={<TextToSign />} />
+            <Route path="/support" element={<Support />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           

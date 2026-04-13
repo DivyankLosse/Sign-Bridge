@@ -1,21 +1,35 @@
 import React, { useState } from 'react';
 import { useHistory } from '../hooks/useHistory';
 import { useLearnTranscript } from '../hooks/useLearnTranscript';
-import { Clock, Search, Trash2, Calendar, BookOpen } from 'lucide-react';
+import { Clock, Search, Trash2, Calendar, BookOpen, Languages, Hand } from 'lucide-react';
+
+const TAB_CONFIG = [
+    { id: 'sign-to-text', label: 'Sign to Text' },
+    { id: 'text-to-sign', label: 'Text to Sign' },
+];
 
 const History = () => {
     const { history, loading, deleteItem } = useHistory();
     const { transcripts } = useLearnTranscript();
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('sign-to-text');
 
     const combinedHistory = [
-        ...history.map(item => ({...item, type: 'translator'})),
+        ...history,
         ...transcripts.map(item => ({...item, type: 'learn', created_at: item.timestamp, original_text: item.sign}))
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    const filteredHistory = combinedHistory.filter(item => 
+    const filteredHistory = combinedHistory.filter(item => {
+        if (activeTab === 'sign-to-text' && item.type !== 'sign-to-text' && item.type !== 'learn') {
+            return false;
+        }
+        if (activeTab === 'text-to-sign' && item.type !== 'text-to-sign') {
+            return false;
+        }
+        return (
         (item.predicted_text || item.original_text || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        );
+    });
 
     return (
         <div className="p-8 max-w-5xl mx-auto animate-fade-in">
@@ -28,6 +42,21 @@ const History = () => {
             </header>
 
             <div className="mb-8">
+                <div className="mb-5 flex flex-wrap gap-3">
+                    {TAB_CONFIG.map(({ id, label }) => (
+                        <button
+                            key={id}
+                            onClick={() => setActiveTab(id)}
+                            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                                activeTab === id
+                                    ? 'border-primary/40 bg-primary/15 text-white'
+                                    : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
+                            }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input 
@@ -65,12 +94,24 @@ const History = () => {
                                                   Learn Mode
                                              </span>
                                         )}
+                                        {item.type === 'text-to-sign' && (
+                                             <span className="flex items-center gap-1 bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-md text-xs font-bold">
+                                                  <Languages className="w-3 h-3" />
+                                                  Text to Sign
+                                             </span>
+                                        )}
+                                        {item.type === 'sign-to-text' && (
+                                             <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-md text-xs font-bold">
+                                                  <Hand className="w-3 h-3" />
+                                                  Sign to Text
+                                             </span>
+                                        )}
                                         <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-xs font-mono">
                                             {Math.round((item.confidence || 0) * 100)}% Match
                                         </span>
                                     </div>
                                 </div>
-                                {item.type !== 'learn' && (
+                                {item.id && item.type !== 'learn' && (
                                     <button 
                                         onClick={() => deleteItem(item.id)}
                                         className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
@@ -86,7 +127,7 @@ const History = () => {
                     <div className="p-16 text-center">
                         <Clock className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                         <h3 className="text-xl font-medium text-white mb-2">No translations found</h3>
-                        <p className="text-gray-400">Try adjusting your search or start a new translation session.</p>
+                        <p className="text-gray-400">Try adjusting your search, switching tabs, or start a new translation session.</p>
                     </div>
                 )}
             </div>

@@ -120,6 +120,9 @@ async def _current_user(
     return _serialize_user(user)
 
 
+get_current_user = _current_user
+
+
 @router.post("/signup", response_model=User, status_code=status.HTTP_201_CREATED)
 def signup(payload: UserCreate, db=Depends(get_db)):
     users = _users_collection(db)

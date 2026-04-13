@@ -30,7 +30,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-4">
                 <div className={`w-2 h-2 rounded-full ${item.confidence > 0.8 ? 'bg-green-500' : 'bg-yellow-500'}`} />
                 <div>
-                    <h4 className="text-white font-medium">{item.predicted_text || item.original_text}</h4>
+                    <h4 className="text-white font-medium">{item.predicted_text || item.original_text || item.content}</h4>
                     <p className="text-sm text-gray-400">{new Date(item.created_at).toLocaleDateString()}</p>
                 </div>
             </div>

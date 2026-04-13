@@ -3,10 +3,13 @@ import { useCamera } from '../hooks/useCamera';
 import RecognitionOverlay from '../components/RecognitionOverlay';
 import PredictionDisplay from '../components/PredictionDisplay';
 import TranscriptPanel from '../components/TranscriptPanel';
-import { Play, Square, RefreshCw } from 'lucide-react';
+import { Play, Square } from 'lucide-react';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import api from '../services/api';
 
+const REQUESTS_PER_SECOND = 5;
+const REQUEST_INTERVAL_MS = 1000 / REQUESTS_PER_SECOND;
 const STABLE_FRAME_THRESHOLD = 2;
 const CLEAR_PREDICTION_AFTER_MISSES = 4;
 const MAX_TRANSCRIPT_ENTRIES = 50;
@@ -15,18 +18,36 @@ const LiveRecognition = () => {
     const [isActive, setIsActive] = useState(false);
     const [transcript, setTranscript] = useState([]);
     const [systemError, setSystemError] = useState(null);
-    const [modelLoading, setModelLoading] = useState(false);
     const [predictionData, setPredictionData] = useState(null);
     const [isConnected, setIsConnected] = useState(true);
     const lastPredRef = useRef(null);
     const isProcessingRef = useRef(false);
+    const lastRequestAtRef = useRef(0);
     const stablePredictionRef = useRef({ value: null, count: 0 });
     const missCountRef = useRef(0);
+    const saveHistoryEntry = useCallback(async (content) => {
+        try {
+            await api.post('/history', {
+                type: 'sign-to-text',
+                content,
+                confidence: 1.0,
+                source: 'translator',
+            });
+        } catch (error) {
+            console.error('Failed to persist translator history', error);
+        }
+    }, []);
 
     const handleFrame = useCallback(async (frameData) => {
         if (!isActive || isProcessingRef.current) return;
+
+        const now = performance.now();
+        if (now - lastRequestAtRef.current < REQUEST_INTERVAL_MS) {
+            return;
+        }
         
         isProcessingRef.current = true;
+        lastRequestAtRef.current = now;
         
         try {
             const response = await axios.post(`${API_BASE_URL}/asl/predict`, {
@@ -93,6 +114,7 @@ const LiveRecognition = () => {
                         return nextEntries.slice(-MAX_TRANSCRIPT_ENTRIES);
                     });
                     lastPredRef.current = currentPred;
+                    saveHistoryEntry(currentPred);
                 }
                 setIsConnected(true);
                 setSystemError(null);
@@ -104,7 +126,7 @@ const LiveRecognition = () => {
         } finally {
             isProcessingRef.current = false;
         }
-    }, [isActive]);
+    }, [isActive, saveHistoryEntry]);
 
     // Camera Hook
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame, {
@@ -118,6 +140,7 @@ const LiveRecognition = () => {
             setIsActive(false);
             setSystemError(null);
             setPredictionData(null);
+            lastRequestAtRef.current = 0;
             stablePredictionRef.current = { value: null, count: 0 };
             missCountRef.current = 0;
             lastPredRef.current = null;
@@ -173,11 +196,7 @@ const LiveRecognition = () => {
                 <div className={`border px-4 py-3 rounded-xl mb-6 flex items-center gap-3 shrink-0 transition-colors ${
                     systemError ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
                 }`}>
-                    {modelLoading ? (
-                        <RefreshCw className="w-5 h-5 animate-spin" />
-                    ) : (
-                        <span className="material-symbols-outlined">error</span>
-                    )}
+                    <span className="material-symbols-outlined">error</span>
                     <span className="text-sm font-medium">{systemError || cameraError}</span>
                 </div>
             )}
@@ -232,7 +251,9 @@ const LiveRecognition = () => {
                             <p className="text-xs text-on-surface-variant/50 uppercase font-bold tracking-widest">Awaiting Data...</p>
                         </div>
                     )}
-                    <TranscriptPanel entries={transcript || []} />
+                    <div className="min-h-0 flex-1">
+                        <TranscriptPanel entries={transcript || []} />
+                    </div>
                 </div>
             </div>
         </div>

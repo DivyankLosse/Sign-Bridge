@@ -1,9 +1,4 @@
-import axios from 'axios';
-import { API_BASE_URL } from '../utils/constants';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+import api from './api';
 
 export const authService = {
   async login(email, password) {
@@ -29,11 +24,11 @@ export const authService = {
   },
 
   async getCurrentUser(token) {
-    const response = await api.get('/auth/me', {
+    const response = await api.get('/auth/me', token ? {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    });
+    } : undefined);
     return response.data;
   },
 };

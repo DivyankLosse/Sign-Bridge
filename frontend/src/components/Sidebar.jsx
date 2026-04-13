@@ -48,10 +48,10 @@ const Sidebar = () => {
                 </NavLink>
             </nav>
             <div className="pt-6 border-t border-white/5 space-y-2">
-                <a className="flex items-center gap-3 px-4 py-3 text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5 rounded-full transition-all" href="#">
+                <NavLink to="/support" className={({isActive}) => `flex items-center gap-3 px-4 py-3 rounded-full transition-all ${isActive ? 'bg-white/10 text-primary-container shadow-[0_0_15px_rgba(139,92,246,0.2)] font-medium' : 'text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5'}`}>
                     <span className="material-symbols-outlined">help</span>
                     <span className="font-medium">Support</span>
-                </a>
+                </NavLink>
                 <div className="flex items-center justify-between px-3 py-3 bg-white/5 rounded-2xl mt-4 border border-white/5">
                     <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold shrink-0">

@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import TopNavbar from '../components/TopNavbar';
 import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
+import api from '../services/api';
 
 const TextToSign = () => {
     const [text, setText] = useState("");
@@ -25,6 +26,16 @@ const TextToSign = () => {
             setAnimations(fullUrls);
             setCurrentIndex(0);
             setIsPlaying(true);
+            try {
+                await api.post('/history', {
+                    type: 'text-to-sign',
+                    content: text.trim(),
+                    confidence: 1.0,
+                    source: 'text-to-sign',
+                });
+            } catch (historyError) {
+                console.error('Failed to persist text-to-sign history', historyError);
+            }
         } catch (error) {
             console.error("Translation failed:", error);
             alert("Failed to fetch animations. Please check if backend is running.");
