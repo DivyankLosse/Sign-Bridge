@@ -148,8 +148,8 @@ const LiveRecognition = () => {
 
     // Camera Hook
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame, {
-        targetFps: 5,
-        jpegQuality: 0.7
+        targetFps: 4,
+        jpegQuality: 0.92
     });
 
     useEffect(() => {
@@ -331,7 +331,7 @@ const LiveRecognition = () => {
                                     ? 'Try moving your hand farther from the camera with your full palm visible.'
                                     : detectorStatus === 'error'
                                         ? 'The backend responded, but prediction did not complete.'
-                                        : 'Start the camera and hold one hand clearly inside the frame.'}
+                                        : 'Start the camera and keep one well-lit hand centered in frame.'}
                             </p>
                         </div>
                     )}

@@ -7,6 +7,7 @@ from app.config import settings
 
 model = None
 detector = None
+fallback_detector = None
 labels = []
 FEATURES_PER_FRAME = 63
 DETECTION_IMAGE_SIZE = (640, 480)
@@ -30,7 +31,13 @@ def _build_asl_model(num_classes: int):
     )
 
 
-def _build_hand_detector():
+def _build_hand_detector(
+    *,
+    static_image_mode: bool,
+    model_complexity: int,
+    min_detection_confidence: float,
+    min_tracking_confidence: float,
+):
     try:
         import mediapipe as mp
 
@@ -43,11 +50,11 @@ def _build_hand_detector():
         from mediapipe.python.solutions import hands as hands_module
 
     return hands_module.Hands(
-        static_image_mode=False,
-        model_complexity=0,
-        max_num_hands=1,
-        min_detection_confidence=0.2,
-        min_tracking_confidence=0.2,
+        static_image_mode=static_image_mode,
+        model_complexity=model_complexity,
+        max_num_hands=2,
+        min_detection_confidence=min_detection_confidence,
+        min_tracking_confidence=min_tracking_confidence,
     )
 
 
@@ -61,32 +68,104 @@ def _extract_landmarks(results):
     return np.array(landmarks, dtype=np.float32)
 
 
-def _detect_landmarks(frame_rgb):
-    global detector
+def _transform_landmarks(landmarks, transform_name, metadata):
+    transformed = landmarks.copy()
+    x_indices = np.arange(0, FEATURES_PER_FRAME, 3)
+    y_indices = np.arange(1, FEATURES_PER_FRAME, 3)
 
-    if detector is None:
-        return None
+    if transform_name == "flip":
+        transformed[x_indices] = 1.0 - transformed[x_indices]
+        return transformed
+
+    if transform_name == "pad":
+        pad_x = metadata["pad_x"]
+        pad_y = metadata["pad_y"]
+        padded_width = metadata["width"]
+        padded_height = metadata["height"]
+        original_width = metadata["original_width"]
+        original_height = metadata["original_height"]
+
+        transformed[x_indices] = (
+            (transformed[x_indices] * padded_width) - pad_x
+        ) / max(original_width, 1)
+        transformed[y_indices] = (
+            (transformed[y_indices] * padded_height) - pad_y
+        ) / max(original_height, 1)
+        transformed[x_indices] = np.clip(transformed[x_indices], 0.0, 1.0)
+        transformed[y_indices] = np.clip(transformed[y_indices], 0.0, 1.0)
+        return transformed
+
+    return transformed
+
+
+def _frame_variants(frame_rgb):
+    height, width = frame_rgb.shape[:2]
+    pad_x = int(width * 0.35)
+    pad_y = int(height * 0.35)
+    padded = cv2.copyMakeBorder(
+        frame_rgb,
+        pad_y,
+        pad_y,
+        pad_x,
+        pad_x,
+        cv2.BORDER_CONSTANT,
+        value=(0, 0, 0),
+    )
 
     variants = [
-        frame_rgb,
-        cv2.flip(frame_rgb, 1),
-        cv2.convertScaleAbs(frame_rgb, alpha=1.15, beta=12),
+        ("original", frame_rgb, {}),
+        ("bright", cv2.convertScaleAbs(frame_rgb, alpha=1.2, beta=18), {}),
+        ("contrast", cv2.convertScaleAbs(frame_rgb, alpha=1.35, beta=0), {}),
+        ("flip", cv2.flip(frame_rgb, 1), {}),
+        (
+            "pad",
+            padded,
+            {
+                "pad_x": pad_x,
+                "pad_y": pad_y,
+                "width": padded.shape[1],
+                "height": padded.shape[0],
+                "original_width": width,
+                "original_height": height,
+            },
+        ),
     ]
+    return variants
 
-    for variant in variants:
+
+def _detect_landmarks(frame_rgb):
+    global detector, fallback_detector
+
+    if detector is None and fallback_detector is None:
+        return None
+
+    variants = _frame_variants(frame_rgb)
+
+    for transform_name, variant, metadata in variants:
+        if detector is None:
+            break
         results = detector.process(variant)
         landmarks = _extract_landmarks(results)
         if landmarks is not None:
-            return landmarks
+            return _transform_landmarks(landmarks, transform_name, metadata)
+
+    for transform_name, variant, metadata in variants:
+        if fallback_detector is None:
+            break
+        results = fallback_detector.process(variant)
+        landmarks = _extract_landmarks(results)
+        if landmarks is not None:
+            return _transform_landmarks(landmarks, transform_name, metadata)
 
     return None
 
 
 def load_model():
-    global model, detector, labels
+    global model, detector, fallback_detector, labels
 
     model = None
     detector = None
+    fallback_detector = None
     labels = []
 
     model_path = settings.SPELL_MODEL_PATH
@@ -124,10 +203,22 @@ def load_model():
             )
 
     try:
-        detector = _build_hand_detector()
-        print("Mediapipe Hands detector loaded")
+        detector = _build_hand_detector(
+            static_image_mode=False,
+            model_complexity=0,
+            min_detection_confidence=0.2,
+            min_tracking_confidence=0.2,
+        )
+        fallback_detector = _build_hand_detector(
+            static_image_mode=True,
+            model_complexity=1,
+            min_detection_confidence=0.15,
+            min_tracking_confidence=0.15,
+        )
+        print("Mediapipe Hands detectors loaded")
     except Exception as detector_error:
         detector = None
+        fallback_detector = None
         print(f"Failed to load Mediapipe model: {detector_error}")
 
 

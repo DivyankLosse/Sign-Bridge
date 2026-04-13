@@ -6,12 +6,17 @@ export const useCamera = (onFrame, options = {}) => {
     const [isStreaming, setIsStreaming] = useState(false);
     const [error, setError] = useState(null);
     const targetFps = options.targetFps ?? 10;
-    const jpegQuality = options.jpegQuality ?? 0.8;
+    const jpegQuality = options.jpegQuality ?? 0.92;
     
     const startCamera = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: 640, height: 480 } 
+                video: {
+                    facingMode: 'user',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    frameRate: { ideal: targetFps, max: 30 }
+                }
             });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
@@ -52,6 +57,10 @@ export const useCamera = (onFrame, options = {}) => {
                 lastProcessTime = timestamp;
                 try {
                     const context = canvasRef.current.getContext('2d');
+                    if (!context) {
+                        animationFrameId = requestAnimationFrame(processFrame);
+                        return;
+                    }
                     context.drawImage(videoRef.current, 0, 0, 640, 480);
                     
                     const frameData = canvasRef.current.toDataURL('image/jpeg', jpegQuality);
