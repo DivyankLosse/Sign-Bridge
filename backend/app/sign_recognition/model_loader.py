@@ -14,6 +14,11 @@ class ModelLoader:
         self._error_state = False
 
     def init_model(self):
+        """
+        Hardened Initialization Logic:
+        - Fails fast if files are missing.
+        - Only marks as initialized on SUCCESS.
+        """
         if self._is_initialized:
             return
         
@@ -30,43 +35,48 @@ class ModelLoader:
                 except RuntimeError as e:
                     log_status(f"Memory growth error: {e}")
         
-        log_status(f"ASL PATH (Absolute): {os.path.abspath(settings.SPELL_MODEL_PATH)}")
+        abs_model_path = os.path.abspath(settings.SPELL_MODEL_PATH)
+        abs_labels_path = os.path.abspath(settings.SPELL_LABELS_PATH)
+        
+        log_status(f"VERIFYING PATHS:")
+        log_status(f"- Model: {abs_model_path} (Exists: {os.path.exists(abs_model_path)})")
+        log_status(f"- Labels: {abs_labels_path} (Exists: {os.path.exists(abs_labels_path)})")
+
+        if not os.path.exists(abs_model_path):
+            self._error_state = True
+            raise FileNotFoundError(f"CRITICAL: ASL model file missing at {abs_model_path}")
+
+        if not os.path.exists(abs_labels_path):
+            self._error_state = True
+            raise FileNotFoundError(f"CRITICAL: ASL labels file missing at {abs_labels_path}")
 
         try:
-            # Load ASL Model (39 labels)
-            if os.path.exists(settings.SPELL_MODEL_PATH):
-                log_status(f"Loading ASL model from {settings.SPELL_MODEL_PATH}")
-                self._model = tf.keras.models.load_model(settings.SPELL_MODEL_PATH, compile=False)
-                
-                if os.path.exists(settings.SPELL_LABELS_PATH):
-                    with open(settings.SPELL_LABELS_PATH, "r") as f:
-                        self._labels = [line.strip() for line in f.readlines()]
-                log_status(f"SUCCESS: ASL model loaded with {len(self._labels)} labels")
-            else:
-                log_status(f"FAILURE: ASL model not found at {settings.SPELL_MODEL_PATH}")
-                self._error_state = True
- 
+            log_status("Loading TensorFlow model...")
+            self._model = tf.keras.models.load_model(abs_model_path, compile=False)
+            
+            with open(abs_labels_path, "r") as f:
+                self._labels = [line.strip() for line in f.readlines()]
+            
+            log_status(f"SUCCESS: ASL model loaded with {len(self._labels)} labels")
             self._is_initialized = True
         except Exception as e:
-            log_status(f"FATAL ERROR during model initialization: {e}")
+            log_status(f"FATAL ERROR during model load: {e}")
             self._error_state = True
-            self._is_initialized = True # Mark as initialized to stop retry spam, but in error state
+            raise e # Propagation to main.py to stop startup
 
     @property
     def model(self):
-        if not self._is_initialized:
-            self.init_model()
+        # Redundant lazy-load removed. Reliance on startup init.
         return self._model
 
     @property
     def labels(self):
-        if not self._is_initialized:
-            self.init_model()
+        # Redundant lazy-load removed. Reliance on startup init.
         return self._labels
 
     @property
     def is_ready(self):
-        return self._is_initialized and (self._model is not None) and not self._error_state
+        return self._is_initialized and (self._model is not None)
 
     @property
     def has_error(self):
