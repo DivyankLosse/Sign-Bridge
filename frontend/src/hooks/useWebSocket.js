@@ -10,17 +10,25 @@ export const useWebSocket = (isActive) => {
 
     useEffect(() => {
         let timeoutId;
+        
         const connect = () => {
-            if (wsRef.current) return;
+            // Strict guard: don't connect if hidden or already connecting/connected
+            if (!isActive || wsRef.current) return;
             
+            console.log("[WS] Attempting connection...");
             const socket = createRecognitionSocket(
                 token,
                 (data) => setPredictionData(data),
-                (error) => console.error('WS Error:', error),
+                (error) => {
+                    console.error('WS Error:', error);
+                    setIsConnected(false);
+                },
                 () => {
                     setIsConnected(false);
                     wsRef.current = null;
+                    // Only retry if still active
                     if (isActive) {
+                        console.log("[WS] Disconnected. Retrying in 2s...");
                         timeoutId = setTimeout(connect, 2000);
                     }
                 }
@@ -30,15 +38,17 @@ export const useWebSocket = (isActive) => {
             setIsConnected(true);
         };
 
-        if (isActive && !isConnected) {
+        if (isActive) {
             connect();
-        } else if (!isActive && isConnected) {
+        } else {
+            // Clear everything on inactive
             if (wsRef.current) {
+                console.log("[WS] Closing connection (user stopped)");
                 wsRef.current.close();
                 wsRef.current = null;
-                setIsConnected(false);
-                setPredictionData(null);
             }
+            setIsConnected(false);
+            setPredictionData(null);
         }
         
         return () => {
@@ -48,7 +58,7 @@ export const useWebSocket = (isActive) => {
                 wsRef.current = null;
             }
         };
-    }, [isActive, isConnected, token]);
+    }, [isActive, token]);
 
     const disconnect = useCallback(() => {
         if (wsRef.current) {

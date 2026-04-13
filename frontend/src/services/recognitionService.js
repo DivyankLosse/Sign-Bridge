@@ -4,6 +4,10 @@ export const createRecognitionSocket = (token, onMessage, onError, onClose) => {
     const wsUrl = `${WEBSOCKET_URL}/ws/recognize${token ? `?token=${token}` : ''}`;
     const ws = new WebSocket(wsUrl);
 
+    ws.onopen = () => {
+        console.log("[WS] Connection established");
+    };
+
     ws.onmessage = (event) => {
         try {
             const data = JSON.parse(event.data);
