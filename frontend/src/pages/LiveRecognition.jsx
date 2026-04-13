@@ -20,6 +20,7 @@ const LiveRecognition = () => {
     const [systemError, setSystemError] = useState(null);
     const [predictionData, setPredictionData] = useState(null);
     const [isConnected, setIsConnected] = useState(true);
+    const [detectorStatus, setDetectorStatus] = useState('idle');
     const lastPredRef = useRef(null);
     const isProcessingRef = useRef(false);
     const lastRequestAtRef = useRef(0);
@@ -29,6 +30,7 @@ const LiveRecognition = () => {
     const activeDisplayText =
         predictionData?.corrected_prediction ||
         predictionData?.raw_prediction ||
+        (detectorStatus === 'no_hand' ? 'Hand not detected' : '') ||
         latestTranscriptEntry?.text ||
         '';
 
@@ -66,17 +68,20 @@ const LiveRecognition = () => {
                 if (!data.error.includes("No hands detected")) {
                      console.error("Prediction error:", data.error);
                      setSystemError(data.error);
+                     setDetectorStatus('error');
                      setIsConnected(true);
                      return;
                 }
                 if (data.error.includes("No hands detected")) {
                     missCountRef.current += 1;
+                    setDetectorStatus('no_hand');
                     setPredictionData(prev => prev ? { ...prev, landmarks_detected: false } : null);
                     if (missCountRef.current >= CLEAR_PREDICTION_AFTER_MISSES) {
                         setPredictionData(null);
                         stablePredictionRef.current = { value: null, count: 0 };
                     }
                 } else {
+                    setDetectorStatus('idle');
                     setPredictionData(null);
                     stablePredictionRef.current = { value: null, count: 0 };
                 }
@@ -89,6 +94,7 @@ const LiveRecognition = () => {
                 }
 
                 missCountRef.current = 0;
+                setDetectorStatus('detected');
                 setPredictionData({
                     corrected_prediction: currentPred,
                     raw_prediction: currentPred,
@@ -96,16 +102,14 @@ const LiveRecognition = () => {
                     landmarks_detected: true
                 });
                 
-                const stable = stablePredictionRef.current;
-                if (stable.value === currentPred) {
-                    stable.count += 1;
+                if (stablePredictionRef.current.value === currentPred) {
+                    stablePredictionRef.current.count += 1;
                 } else {
                     stablePredictionRef.current = { value: currentPred, count: 1 };
                 }
 
-                const nextStable = stablePredictionRef.current;
                 if (
-                    nextStable.count >= STABLE_FRAME_THRESHOLD &&
+                    stablePredictionRef.current.count >= STABLE_FRAME_THRESHOLD &&
                     currentPred !== lastPredRef.current
                 ) {
                     setTranscript(prev => {
@@ -136,6 +140,7 @@ const LiveRecognition = () => {
             console.error("Frame send error:", error);
             setIsConnected(false);
             setSystemError("Failed to connect to backend server");
+            setDetectorStatus('error');
         } finally {
             isProcessingRef.current = false;
         }
@@ -166,6 +171,7 @@ const LiveRecognition = () => {
             setIsActive(false);
             setSystemError(null);
             setPredictionData(null);
+            setDetectorStatus('idle');
             lastRequestAtRef.current = 0;
             stablePredictionRef.current = { value: null, count: 0 };
             missCountRef.current = 0;
@@ -174,6 +180,7 @@ const LiveRecognition = () => {
         } else {
             startCamera();
             setIsActive(true);
+            setDetectorStatus('searching');
         }
     };
 
@@ -237,7 +244,11 @@ const LiveRecognition = () => {
                         {activeDisplayText || 'Waiting for gesture...'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                        Transcript entries: {transcript.length}
+                        {detectorStatus === 'no_hand'
+                            ? 'Move one hand fully into frame'
+                            : detectorStatus === 'detected'
+                                ? `Transcript entries: ${transcript.length}`
+                                : 'Align your hand inside the camera frame'}
                     </p>
                 </div>
             </div>
@@ -288,7 +299,11 @@ const LiveRecognition = () => {
                                     {activeDisplayText || 'Waiting for gesture...'}
                                 </p>
                                 <p className="text-xs text-white/50 mt-1">
-                                    Transcript entries: {transcript.length}
+                                    {detectorStatus === 'no_hand'
+                                        ? 'Move one hand fully into frame'
+                                        : detectorStatus === 'detected'
+                                            ? `Transcript entries: ${transcript.length}`
+                                            : 'Align your hand inside the camera frame'}
                                 </p>
                             </div>
                         </>
@@ -300,8 +315,24 @@ const LiveRecognition = () => {
                     {predictionData ? (
                         <PredictionDisplay data={predictionData} useNlp={false} />
                     ) : (
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shrink-0 opacity-50">
-                            <p className="text-xs text-on-surface-variant/50 uppercase font-bold tracking-widest">Awaiting Data...</p>
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shrink-0">
+                            <p className="text-xs text-on-surface-variant/50 uppercase font-bold tracking-widest mb-2">Detector Status</p>
+                            <p className="text-lg font-semibold text-white">
+                                {detectorStatus === 'no_hand'
+                                    ? 'Hand not detected'
+                                    : detectorStatus === 'error'
+                                        ? 'Prediction error'
+                                        : detectorStatus === 'searching'
+                                            ? 'Searching for hand...'
+                                            : 'Awaiting data...'}
+                            </p>
+                            <p className="text-sm text-gray-400 mt-2">
+                                {detectorStatus === 'no_hand'
+                                    ? 'Try moving your hand farther from the camera with your full palm visible.'
+                                    : detectorStatus === 'error'
+                                        ? 'The backend responded, but prediction did not complete.'
+                                        : 'Start the camera and hold one hand clearly inside the frame.'}
+                            </p>
                         </div>
                     )}
                     <div className="min-h-0 flex-1">

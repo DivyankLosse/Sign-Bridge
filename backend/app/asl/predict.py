@@ -9,6 +9,7 @@ model = None
 detector = None
 labels = []
 FEATURES_PER_FRAME = 63
+DETECTION_IMAGE_SIZE = (640, 480)
 
 
 def _build_asl_model(num_classes: int):
@@ -42,10 +43,43 @@ def _build_hand_detector():
         from mediapipe.python.solutions import hands as hands_module
 
     return hands_module.Hands(
-        static_image_mode=True,
+        static_image_mode=False,
+        model_complexity=0,
         max_num_hands=1,
-        min_detection_confidence=0.3,
+        min_detection_confidence=0.2,
+        min_tracking_confidence=0.2,
     )
+
+
+def _extract_landmarks(results):
+    if not results or not results.multi_hand_landmarks:
+        return None
+
+    landmarks = []
+    for lm in results.multi_hand_landmarks[0].landmark:
+        landmarks.extend([lm.x, lm.y, lm.z])
+    return np.array(landmarks, dtype=np.float32)
+
+
+def _detect_landmarks(frame_rgb):
+    global detector
+
+    if detector is None:
+        return None
+
+    variants = [
+        frame_rgb,
+        cv2.flip(frame_rgb, 1),
+        cv2.convertScaleAbs(frame_rgb, alpha=1.15, beta=12),
+    ]
+
+    for variant in variants:
+        results = detector.process(variant)
+        landmarks = _extract_landmarks(results)
+        if landmarks is not None:
+            return landmarks
+
+    return None
 
 
 def load_model():
@@ -108,16 +142,9 @@ def get_landmarks(base64_string):
     if image is None or detector is None:
         return None
 
+    image = cv2.resize(image, DETECTION_IMAGE_SIZE)
     frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = detector.process(frame_rgb)
-
-    if not results.multi_hand_landmarks:
-        return None
-
-    landmarks = []
-    for lm in results.multi_hand_landmarks[0].landmark:
-        landmarks.extend([lm.x, lm.y, lm.z])
-    return np.array(landmarks)
+    return _detect_landmarks(frame_rgb)
 
 
 def predict_sign(frame_data):
