@@ -14,19 +14,26 @@ from app.text_to_sign.mapper import refresh_animations_cache
 
 app = FastAPI(title="Papago Sign API", version="1.0.0")
 
+import asyncio
+
 @app.on_event("startup")
 async def startup_event():
-    # 1. Initialize Dual Recognition Models
-    from app.sign_recognition.model_loader import model_loader
-    model_loader.init_model()
-    
-    # 2. Refresh Animations Cache
-    animations = refresh_animations_cache()
-    print(f"\n{'='*40}")
-    print(f"Startup Complete")
-    print(f"Models Initialized: {model_loader._is_initialized}")
-    print(f"Animations Loaded: {len(animations)}")
-    print(f"{'='*40}\n")
+    # Helper to load models and refresh cache in background
+    async def initialize_resources():
+        from app.sign_recognition.model_loader import model_loader
+        # Run synchronous init_model in a thread to avoid blocking the event loop
+        await asyncio.to_thread(model_loader.init_model)
+        
+        animations = refresh_animations_cache()
+        print(f"\n{'='*40}")
+        print(f"Background Initialization Complete")
+        print(f"Models Initialized: {model_loader._is_initialized}")
+        print(f"Animations Loaded: {len(animations)}")
+        print(f"{'='*40}\n")
+
+    # Start initialization in background and return immediately
+    asyncio.create_task(initialize_resources())
+    print("Startup: Server binding to port. Model loading moved to background thread.")
 
 # Mount static files for animations
 # Mount static files for animations
