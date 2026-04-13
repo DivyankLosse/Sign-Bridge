@@ -14,6 +14,8 @@ const LiveRecognition = () => {
     const [systemError, setSystemError] = useState(null);
     const [mode, setMode] = useState("AUTO");
     const [threshold, setThreshold] = useState(0.7);
+    const [modelLoading, setModelLoading] = useState(false);
+    const lastPredRef = useRef(null);
 
     // 1. WebSocket Hook (Provides isConnected and sendFrame)
     const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
