@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useUserStats } from '../hooks/useUserStats';
 import { useHistory } from '../hooks/useHistory';
@@ -24,6 +24,23 @@ const Dashboard = () => {
     const { stats, loading: statsLoading } = useUserStats();
     const { history, loading: historyLoading } = useHistory();
     const { progress } = useLearnProgress();
+    const [isSessionActive, setIsSessionActive] = useState(
+        () => localStorage.getItem('translatorSessionActive') === 'true'
+    );
+
+    useEffect(() => {
+        const syncSessionState = () => {
+            setIsSessionActive(localStorage.getItem('translatorSessionActive') === 'true');
+        };
+
+        window.addEventListener('storage', syncSessionState);
+        const interval = window.setInterval(syncSessionState, 1500);
+
+        return () => {
+            window.removeEventListener('storage', syncSessionState);
+            window.clearInterval(interval);
+        };
+    }, []);
 
     const renderHistoryCard = (item) => (
         <div key={item.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
@@ -71,10 +88,10 @@ const Dashboard = () => {
                     description="Confidence level"
                 />
                 <DashboardCard 
-                    title="Learning XP" 
-                    value={progress.xp}
+                    title="Translator Session" 
+                    value={isSessionActive ? "Live" : "Idle"}
                     icon={<GraduationCap className="w-6 h-6" />}
-                    description={`${progress.signsLearned.length} signs learned`}
+                    description={isSessionActive ? "Camera session active" : `${progress.signsLearned.length} signs learned`}
                />
             </div>
 

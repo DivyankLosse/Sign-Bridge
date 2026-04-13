@@ -25,6 +25,7 @@ const LiveRecognition = () => {
     const lastRequestAtRef = useRef(0);
     const stablePredictionRef = useRef({ value: null, count: 0 });
     const missCountRef = useRef(0);
+
     const saveHistoryEntry = useCallback(async (content) => {
         try {
             await api.post('/history', {
@@ -111,7 +112,13 @@ const LiveRecognition = () => {
                                 timestamp: new Date().toISOString()
                             }
                         ];
-                        return nextEntries.slice(-MAX_TRANSCRIPT_ENTRIES);
+                        const trimmedEntries = nextEntries.slice(-MAX_TRANSCRIPT_ENTRIES);
+                        console.debug('[LiveRecognition] appending transcript entry', {
+                            prediction: currentPred,
+                            nextLength: trimmedEntries.length,
+                            latestEntry: trimmedEntries[trimmedEntries.length - 1]
+                        });
+                        return trimmedEntries;
                     });
                     lastPredRef.current = currentPred;
                     saveHistoryEntry(currentPred);
@@ -134,6 +141,19 @@ const LiveRecognition = () => {
         jpegQuality: 0.7
     });
 
+    useEffect(() => {
+        console.debug('[LiveRecognition] transcript state updated', transcript);
+    }, [transcript]);
+
+    useEffect(() => {
+        localStorage.setItem('translatorSessionActive', isActive ? 'true' : 'false');
+        return () => {
+            if (!isActive) {
+                localStorage.removeItem('translatorSessionActive');
+            }
+        };
+    }, [isActive]);
+
     const toggleSession = () => {
         if (isActive) {
             stopCamera();
@@ -144,6 +164,7 @@ const LiveRecognition = () => {
             stablePredictionRef.current = { value: null, count: 0 };
             missCountRef.current = 0;
             lastPredRef.current = null;
+            localStorage.removeItem('translatorSessionActive');
         } else {
             startCamera();
             setIsActive(true);
@@ -252,7 +273,7 @@ const LiveRecognition = () => {
                         </div>
                     )}
                     <div className="min-h-0 flex-1">
-                        <TranscriptPanel entries={transcript || []} />
+                        <TranscriptPanel entries={transcript} />
                     </div>
                 </div>
             </div>
