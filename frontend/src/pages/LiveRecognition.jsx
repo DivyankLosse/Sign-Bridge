@@ -108,11 +108,18 @@ const LiveRecognition = () => {
         </div>
     );
 
-    // Debug logging for production monitoring
+    // Debug logging & production validation
     useEffect(() => {
+        const isProd = import.meta.env.PROD;
+        const apiBase = import.meta.env.VITE_API_BASE_URL;
+        
         console.log(`[LiveRecognition] Environment: ${import.meta.env.MODE}`);
-        console.log(`[LiveRecognition] API Base: ${import.meta.env.VITE_API_BASE_URL}`);
+        console.log(`[LiveRecognition] API Base: ${apiBase}`);
         console.log(`[LiveRecognition] WebSocket: ${isConnected ? 'Connected' : 'Disconnected'}`);
+
+        if (isProd && (!apiBase || apiBase.includes('localhost'))) {
+            setSystemError("Production Configuration Error: The Web App is incorrectly attempting to connect to a local server. Please set VITE_API_BASE_URL in your hosting provider's dashboard.");
+        }
     }, [isConnected]);
 
     return (
