@@ -47,6 +47,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                 if frame:
                     # Always add to buffer
                     frame_buffer.append(frame)
+                    print(f"[WS] Frame received. Local Buffer size: {len(frame_buffer)}")
                     
                     if len(frame_buffer) >= BUFFER_SIZE and not is_processing:
                         is_processing = True
@@ -56,6 +57,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             
                             client_mode = payload.get("mode", "AUTO")
                             client_threshold = payload.get("threshold", 0.7)
+                            print(f"[WS] Running inference (mode={client_mode}, threshold={client_threshold})")
                             
                             result = await asyncio.to_thread(
                                 predict_hybrid, 
@@ -66,6 +68,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             
                             raw_pred = result.get("prediction")
                             pred_mode = result.get("mode", "spell")
+                            print(f"[WS] Prediction Result: {raw_pred} (Mode: {pred_mode}, Conf: {result.get('confidence', 0.0)})")
                             
                             # Apply NLP correction if enabled (mostly for word mode)
                             corrected_text = raw_pred

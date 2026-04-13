@@ -21,6 +21,7 @@ const LiveRecognition = () => {
     // 2. Frame capture callback (Uses isConnected and sendFrame)
     const handleFrame = useCallback((frameData) => {
         if (isActive && isConnected) {
+            console.debug(`[Camera] Frame captured. Length: ${frameData.length}`);
             sendFrame(frameData, useNlp, mode, threshold);
         }
     }, [isActive, isConnected, useNlp, mode, threshold, sendFrame]);
@@ -40,11 +41,23 @@ const LiveRecognition = () => {
     };
 
     useEffect(() => {
-        if (predictionData?.raw_prediction === "MODEL_NOT_LOADED") {
-            setSystemError("Backend is warming up: Sign recognition model is currently loading. Please wait 10-20 seconds.");
-            setModelLoading(true);
-        } else if (predictionData?.raw_prediction !== undefined) {
-            setModelLoading(false);
+        if (predictionData) {
+            console.debug("[WS] Prediction received:", predictionData);
+            
+            if (predictionData.raw_prediction === "MODEL_NOT_LOADED") {
+                setSystemError("Backend is warming up: Sign recognition model is currently loading. Please wait 10-20 seconds.");
+                setModelLoading(true);
+            } else {
+                setModelLoading(false);
+                // Clear system error if we are getting valid (even if null) predictions
+                if (systemError && systemError.includes("warming up")) setSystemError(null);
+            }
+
+            // Show feedback if landmarks aren't detected
+            if (predictionData.landmarks_detected === false && isActive) {
+                // Only show if we haven't seen landmarks for a while (to avoid flickering)
+                // For now, let's just log it or show a subtle UI hint
+            }
         }
     }, [predictionData]);
 
@@ -57,17 +70,25 @@ const LiveRecognition = () => {
 
     // Update transcript when prediction stabilizes
     useEffect(() => {
-        if (predictionData && predictionData.corrected_prediction) {
+        if (predictionData) {
             const currentPred = predictionData.corrected_prediction;
-            if (currentPred !== lastPredRef.current && currentPred !== "MODEL_NOT_LOADED") {
-                // Determine if this is a new word or sentence
-                setTranscript(prev => [...prev, {
-                    text: currentPred,
-                    raw: predictionData.raw_prediction,
-                    confidence: predictionData.confidence,
-                    timestamp: new Date()
-                }]);
-                lastPredRef.current = currentPred;
+            console.debug(`[Transcript] Eval: Current='${currentPred}', Last='${lastPredRef.current}'`);
+            
+            if (currentPred && currentPred !== "MODEL_NOT_LOADED") {
+                if (currentPred !== lastPredRef.current) {
+                    console.log(`[Transcript] NEW PREDICTION: ${currentPred}`);
+                    setTranscript(prev => [...prev, {
+                        text: currentPred,
+                        raw: predictionData.raw_prediction,
+                        confidence: predictionData.confidence,
+                        timestamp: new Date()
+                    }]);
+                    lastPredRef.current = currentPred;
+                }
+            } else if (!currentPred) {
+                // If the model returns None (no prediction), 
+                // we reset the lastPredRef so the user can sign the same word again
+                lastPredRef.current = null;
             }
         }
     }, [predictionData]);

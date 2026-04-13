@@ -35,13 +35,15 @@ def predict_hybrid(base64_frames, mode="AUTO", threshold=0.7):
                 sequence_landmarks.append(landmarks)
                 last_valid_landmarks = landmarks
             else:
-                # If no landmarks, we pad with zeros to maintain temporal consistency?
-                # Actually, for words, zero padding is better than skipping for LSTM.
                 sequence_landmarks.append(np.zeros(63))
         else:
             sequence_landmarks.append(np.zeros(63))
 
+    valid_seq_count = sum(1 for s in sequence_landmarks if not np.all(s == 0))
+    print(f"[Predict] Processed {len(sequence_landmarks)} frames. Valid chunks: {valid_seq_count}")
+
     if last_valid_landmarks is None:
+        print("[Predict] FAILURE: No landmarks detected in entire sequence.")
         return {"prediction": None, "confidence": 0.0, "mode": mode, "landmarks_detected": False}
 
     # 2. Sequential Inference (WLASL)
