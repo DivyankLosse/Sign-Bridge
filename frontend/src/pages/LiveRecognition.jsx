@@ -203,10 +203,12 @@ const LiveRecognition = () => {
                                 ref={canvasRef} 
                                 width={640} 
                                 height={480} 
-                                className="absolute inset-0 w-full h-full object-cover"
+                                className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
                             />
                             {/* SVG Overlay for landmarks representation or feedback */}
-                            <RecognitionOverlay active={predictionData?.landmarks_detected} />
+                            <div className="absolute inset-0 pointer-events-none scale-x-[-1]">
+                                <RecognitionOverlay active={predictionData?.landmarks_detected} />
+                            </div>
                             
                             {/* Status Pill */}
                             <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
