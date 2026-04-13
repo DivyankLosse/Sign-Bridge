@@ -5,6 +5,11 @@ import PredictionDisplay from '../components/PredictionDisplay';
 import TranscriptPanel from '../components/TranscriptPanel';
 import { Play, Square, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import { API_BASE_URL } from '../utils/constants';
+
+const STABLE_FRAME_THRESHOLD = 2;
+const CLEAR_PREDICTION_AFTER_MISSES = 4;
+const MAX_TRANSCRIPT_ENTRIES = 50;
 
 const LiveRecognition = () => {
     const [isActive, setIsActive] = useState(false);
@@ -15,6 +20,8 @@ const LiveRecognition = () => {
     const [isConnected, setIsConnected] = useState(true);
     const lastPredRef = useRef(null);
     const isProcessingRef = useRef(false);
+    const stablePredictionRef = useRef({ value: null, count: 0 });
+    const missCountRef = useRef(0);
 
     const handleFrame = useCallback(async (frameData) => {
         if (!isActive || isProcessingRef.current) return;
@@ -22,8 +29,7 @@ const LiveRecognition = () => {
         isProcessingRef.current = true;
         
         try {
-            const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-            const response = await axios.post(`${apiBase}/asl/predict`, {
+            const response = await axios.post(`${API_BASE_URL}/asl/predict`, {
                 features: frameData
             });
             
@@ -31,12 +37,30 @@ const LiveRecognition = () => {
             if (data.error) {
                 if (!data.error.includes("No hands detected")) {
                      console.error("Prediction error:", data.error);
+                     setSystemError(data.error);
+                     setIsConnected(true);
+                     return;
                 }
-                setPredictionData(null);
-                lastPredRef.current = null;
+                if (data.error.includes("No hands detected")) {
+                    missCountRef.current += 1;
+                    setPredictionData(prev => prev ? { ...prev, landmarks_detected: false } : null);
+                    if (missCountRef.current >= CLEAR_PREDICTION_AFTER_MISSES) {
+                        setPredictionData(null);
+                        stablePredictionRef.current = { value: null, count: 0 };
+                    }
+                } else {
+                    setPredictionData(null);
+                    stablePredictionRef.current = { value: null, count: 0 };
+                }
+                setIsConnected(true);
+                setSystemError(null);
             } else if (data.prediction) {
-                const currentPred = data.prediction;
-                
+                const currentPred = String(data.prediction).trim();
+                if (!currentPred) {
+                    return;
+                }
+
+                missCountRef.current = 0;
                 setPredictionData({
                     corrected_prediction: currentPred,
                     raw_prediction: currentPred,
@@ -44,18 +68,35 @@ const LiveRecognition = () => {
                     landmarks_detected: true
                 });
                 
-                if (currentPred && currentPred !== lastPredRef.current) {
-                    setTranscript(prev => [...prev, {
-                        text: currentPred,
-                        raw: currentPred,
-                        confidence: 1.0,
-                        timestamp: new Date()
-                    }]);
+                const stable = stablePredictionRef.current;
+                if (stable.value === currentPred) {
+                    stable.count += 1;
+                } else {
+                    stablePredictionRef.current = { value: currentPred, count: 1 };
+                }
+
+                const nextStable = stablePredictionRef.current;
+                if (
+                    nextStable.count >= STABLE_FRAME_THRESHOLD &&
+                    currentPred !== lastPredRef.current
+                ) {
+                    setTranscript(prev => {
+                        const nextEntries = [
+                            ...prev,
+                            {
+                                text: currentPred,
+                                raw: currentPred,
+                                confidence: 1.0,
+                                timestamp: new Date().toISOString()
+                            }
+                        ];
+                        return nextEntries.slice(-MAX_TRANSCRIPT_ENTRIES);
+                    });
                     lastPredRef.current = currentPred;
                 }
+                setIsConnected(true);
+                setSystemError(null);
             }
-            setIsConnected(true);
-            setSystemError(null);
         } catch (error) {
             console.error("Frame send error:", error);
             setIsConnected(false);
@@ -66,13 +107,20 @@ const LiveRecognition = () => {
     }, [isActive]);
 
     // Camera Hook
-    const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
+    const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame, {
+        targetFps: 5,
+        jpegQuality: 0.7
+    });
 
     const toggleSession = () => {
         if (isActive) {
             stopCamera();
             setIsActive(false);
             setSystemError(null);
+            setPredictionData(null);
+            stablePredictionRef.current = { value: null, count: 0 };
+            missCountRef.current = 0;
+            lastPredRef.current = null;
         } else {
             startCamera();
             setIsActive(true);

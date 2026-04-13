@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 
-export const useCamera = (onFrame) => {
+export const useCamera = (onFrame, options = {}) => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const [isStreaming, setIsStreaming] = useState(false);
     const [error, setError] = useState(null);
+    const targetFps = options.targetFps ?? 10;
+    const jpegQuality = options.jpegQuality ?? 0.8;
     
     const startCamera = async () => {
         try {
@@ -34,8 +36,7 @@ export const useCamera = (onFrame) => {
     useEffect(() => {
         let animationFrameId;
         let lastProcessTime = 0;
-        const TARGET_FPS = 10;
-        const frameInterval = 1000 / TARGET_FPS;
+        const frameInterval = 1000 / targetFps;
 
         const processFrame = (timestamp) => {
             if (!isStreaming || !canvasRef.current || !videoRef.current) return;
@@ -53,7 +54,7 @@ export const useCamera = (onFrame) => {
                     const context = canvasRef.current.getContext('2d');
                     context.drawImage(videoRef.current, 0, 0, 640, 480);
                     
-                    const frameData = canvasRef.current.toDataURL('image/jpeg', 0.8);
+                    const frameData = canvasRef.current.toDataURL('image/jpeg', jpegQuality);
                     if (onFrame) onFrame(frameData);
                 } catch (err) {
                     console.error("Frame processing error:", err);
@@ -72,7 +73,7 @@ export const useCamera = (onFrame) => {
                 cancelAnimationFrame(animationFrameId);
             }
         };
-    }, [isStreaming, onFrame]);
+    }, [isStreaming, onFrame, targetFps, jpegQuality]);
 
     return { videoRef, canvasRef, isStreaming, startCamera, stopCamera, error };
 };
