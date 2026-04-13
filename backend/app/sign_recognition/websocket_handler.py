@@ -3,7 +3,7 @@ from typing import List
 import json
 import traceback
 import asyncio
-from app.sign_recognition.predict import predict_sign_batch
+# Removed unused imports
 from app.nlp_correction.grammar_corrector import grammar_corrector
 
 router = APIRouter(tags=["websocket"])
