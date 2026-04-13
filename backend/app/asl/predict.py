@@ -38,16 +38,37 @@ def _build_hand_detector(
     min_detection_confidence: float,
     min_tracking_confidence: float,
 ):
-    try:
-        import mediapipe as mp
+    hands_module = None
+    import_errors = []
 
-        solutions = getattr(mp, "solutions", None)
-        if solutions is not None and hasattr(solutions, "hands"):
-            hands_module = solutions.hands
-        else:
-            from mediapipe.python.solutions import hands as hands_module
-    except Exception:
-        from mediapipe.python.solutions import hands as hands_module
+    try:
+        from mediapipe import solutions as mp_solutions
+
+        if hasattr(mp_solutions, "hands"):
+            hands_module = mp_solutions.hands
+    except Exception as exc:
+        import_errors.append(f"mediapipe.solutions: {exc}")
+
+    if hands_module is None:
+        try:
+            import mediapipe as mp
+
+            solutions = getattr(mp, "solutions", None)
+            if solutions is not None and hasattr(solutions, "hands"):
+                hands_module = solutions.hands
+        except Exception as exc:
+            import_errors.append(f"mediapipe top-level: {exc}")
+
+    if hands_module is None:
+        try:
+            from mediapipe.python.solutions import hands as mp_python_hands
+
+            hands_module = mp_python_hands
+        except Exception as exc:
+            import_errors.append(f"mediapipe.python.solutions: {exc}")
+
+    if hands_module is None:
+        raise RuntimeError(" / ".join(import_errors) or "Unable to import MediaPipe Hands")
 
     return hands_module.Hands(
         static_image_mode=static_image_mode,
