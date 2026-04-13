@@ -1,9 +1,10 @@
-from pydantic import BaseSettings
+import os
+from pydantic import BaseSettings, Field
 from pathlib import Path
 
 class Settings(BaseSettings):
-    MONGO_URI: str
-    SECRET_KEY: str
+    MONGO_URI: str = Field(default_factory=lambda: os.getenv("MONGO_URI") or os.getenv("MONGODB_URI") or "")
+    SECRET_KEY: str = Field(default_factory=lambda: os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET") or "")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     # Absolute paths calculation
