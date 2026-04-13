@@ -8,6 +8,25 @@ from app.config import settings
 model = None
 detector = None
 labels = []
+FEATURES_PER_FRAME = 63
+
+
+def _build_asl_model(num_classes: int):
+    import tensorflow as tf
+
+    return tf.keras.Sequential(
+        [
+            tf.keras.layers.Dense(128, activation="relu", input_shape=(FEATURES_PER_FRAME,)),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dropout(0.2),
+            tf.keras.layers.Dense(256, activation="relu"),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dropout(0.3),
+            tf.keras.layers.Dense(128, activation="relu"),
+            tf.keras.layers.BatchNormalization(),
+            tf.keras.layers.Dense(num_classes, activation="softmax"),
+        ]
+    )
 
 
 def load_model():
@@ -19,27 +38,8 @@ def load_model():
 
     model_path = settings.SPELL_MODEL_PATH
     labels_path = settings.SPELL_LABELS_PATH
-    task_path = str(settings.BASE_DIR / "app" / "models" / "hand_landmarker.task")
 
     print("Loading model from:", model_path)
-
-    try:
-        import tensorflow as tf
-
-        model = tf.keras.models.load_model(model_path, compile=False)
-        print("Model loaded successfully with TensorFlow")
-    except Exception as tf_error:
-        try:
-            import keras
-
-            model = keras.models.load_model(model_path, compile=False)
-            print("Model loaded successfully with standalone Keras")
-        except Exception as keras_error:
-            print(
-                "Failed to load ASL model. "
-                f"TensorFlow error: {tf_error}. "
-                f"Keras error: {keras_error}"
-            )
 
     try:
         with open(labels_path, "r", encoding="utf-8") as handle:
@@ -50,13 +50,35 @@ def load_model():
         print(f"Failed to load ASL labels: {labels_error}")
 
     try:
-        from mediapipe.tasks import python
-        from mediapipe.tasks.python import vision
+        import tensorflow as tf
 
-        base_options = python.BaseOptions(model_asset_path=task_path)
-        options = vision.HandLandmarkerOptions(base_options=base_options, num_hands=1)
-        detector = vision.HandLandmarker.create_from_options(options)
-        print("Mediapipe model loaded")
+        num_classes = len(labels) if labels else 39
+        model = _build_asl_model(num_classes)
+        model.load_weights(model_path)
+        print("ASL weights loaded into rebuilt TensorFlow model")
+    except Exception as weights_error:
+        try:
+            import tensorflow as tf
+
+            model = tf.keras.models.load_model(model_path, compile=False)
+            print("ASL model loaded via TensorFlow deserialization fallback")
+        except Exception as tf_error:
+            model = None
+            print(
+                "Failed to load ASL model. "
+                f"Weights error: {weights_error}. "
+                f"TensorFlow fallback error: {tf_error}"
+            )
+
+    try:
+        import mediapipe as mp
+
+        detector = mp.solutions.hands.Hands(
+            static_image_mode=True,
+            max_num_hands=1,
+            min_detection_confidence=0.3,
+        )
+        print("Mediapipe Hands detector loaded")
     except Exception as detector_error:
         detector = None
         print(f"Failed to load Mediapipe model: {detector_error}")
@@ -64,7 +86,6 @@ def load_model():
 
 def get_landmarks(base64_string):
     global detector
-    import mediapipe as mp
 
     if "," in base64_string:
         base64_string = base64_string.split(",")[1]
@@ -75,14 +96,13 @@ def get_landmarks(base64_string):
         return None
 
     frame_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
-    results = detector.detect(mp_image)
+    results = detector.process(frame_rgb)
 
-    if not results.hand_landmarks:
+    if not results.multi_hand_landmarks:
         return None
 
     landmarks = []
-    for lm in results.hand_landmarks[0]:
+    for lm in results.multi_hand_landmarks[0].landmark:
         landmarks.extend([lm.x, lm.y, lm.z])
     return np.array(landmarks)
 

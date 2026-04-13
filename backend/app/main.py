@@ -57,6 +57,10 @@ def read_root():
         "environment": settings.ENVIRONMENT
     }
 
+@app.head("/")
+def read_root_head():
+    return
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
