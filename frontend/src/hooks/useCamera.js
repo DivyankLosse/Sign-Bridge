@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 export const useCamera = (onFrame, options = {}) => {
     const videoRef = useRef(null);
@@ -9,7 +9,13 @@ export const useCamera = (onFrame, options = {}) => {
     const jpegQuality = options.jpegQuality ?? 0.92;
     const lazyFrameData = options.lazyFrameData ?? false;
     
-    const startCamera = async () => {
+    const startCamera = useCallback(async () => {
+        if (videoRef.current?.srcObject) {
+            setIsStreaming(true);
+            setError(null);
+            return;
+        }
+
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: {
@@ -28,15 +34,16 @@ export const useCamera = (onFrame, options = {}) => {
             console.error("Camera access error:", err);
             setError("Could not access camera. Please check permissions.");
         }
-    };
+    }, [targetFps]);
 
-    const stopCamera = () => {
+    const stopCamera = useCallback(() => {
         if (videoRef.current && videoRef.current.srcObject) {
             const tracks = videoRef.current.srcObject.getTracks();
             tracks.forEach(track => track.stop());
+            videoRef.current.srcObject = null;
             setIsStreaming(false);
         }
-    };
+    }, []);
 
     // Capture loop
     useEffect(() => {

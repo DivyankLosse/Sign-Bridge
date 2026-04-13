@@ -1,30 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { CameraTrainer } from './CameraTrainer';
-import { motion } from 'framer-motion';
 import { Check, Info } from 'lucide-react';
+
+const AUTO_ADVANCE_DELAY_MS = 900;
 
 export const PracticeMode = ({ level, onComplete }) => {
     const signs = level.signs;
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [rawPrediction, setRawPrediction] = useState(null);
+    const [isMatched, setIsMatched] = useState(false);
+    const advanceTimeoutRef = useRef(null);
     const currentSign = signs[currentIndex];
 
-    // Practice mode allows you to move on voluntarily
-    const handleNext = () => {
+    const clearAdvanceTimeout = useCallback(() => {
+        if (advanceTimeoutRef.current) {
+            clearTimeout(advanceTimeoutRef.current);
+            advanceTimeoutRef.current = null;
+        }
+    }, []);
+
+    const handleNext = useCallback(() => {
+        clearAdvanceTimeout();
+
         if (currentIndex < signs.length - 1) {
             setCurrentIndex(prev => prev + 1);
-            setRawPrediction(null);
+            setIsMatched(false);
         } else {
             onComplete();
         }
-    };
+    }, [clearAdvanceTimeout, currentIndex, onComplete, signs.length]);
 
-    const handleStablePrediction = (pred, conf) => {
+    const handleStablePrediction = (pred) => {
         if (pred === currentSign.sign) {
-             // Visual highlight could go here for "matching"
-             setRawPrediction(pred);
+             setIsMatched(true);
+             if (!advanceTimeoutRef.current) {
+                advanceTimeoutRef.current = setTimeout(() => {
+                    handleNext();
+                }, AUTO_ADVANCE_DELAY_MS);
+             }
         }
     };
+
+    useEffect(() => () => clearAdvanceTimeout(), [clearAdvanceTimeout]);
 
     return (
         <div className="flex flex-col h-full flex-grow relative">
@@ -59,11 +75,11 @@ export const PracticeMode = ({ level, onComplete }) => {
                         className="mt-auto py-3 w-full bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl transition-all border border-white/10 flex items-center justify-center gap-2"
                     >
                         {currentIndex === signs.length - 1 ? 'Finish Practice' : 'Skip / Next'}
-                        {rawPrediction === currentSign.sign && <Check className="w-4 h-4 text-green-400" />}
+                        {isMatched && <Check className="w-4 h-4 text-green-400" />}
                     </button>
                     
                     <p className="text-xs text-gray-500 mt-4 text-center">
-                        Try copying the sign until the AI recognizes it. You can skip forward at any time.
+                        Try copying the sign until the AI recognizes it. Correct signs move ahead automatically.
                     </p>
                 </div>
 
@@ -73,21 +89,22 @@ export const PracticeMode = ({ level, onComplete }) => {
                          isActive={true} 
                          fps={5}
                          onStablePrediction={handleStablePrediction}
-                         onRawPrediction={(data) => setRawPrediction(data.prediction)}
+                         onRawPrediction={(data) => {
+                            if (data.prediction !== currentSign.sign) {
+                                setIsMatched(false);
+                            }
+                         }}
                      />
 
                      {/* Success Indicator Overlay */}
-                     <motion.div 
-                        initial={false}
-                        animate={{ 
-                            opacity: rawPrediction === currentSign.sign ? 1 : 0, 
-                            scale: rawPrediction === currentSign.sign ? 1 : 0.95 
-                        }}
-                        className="absolute top-4 right-4 bg-green-500/20 backdrop-blur-md border border-green-500 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 font-bold pointer-events-none"
+                     <div
+                        className={`absolute top-4 right-4 bg-green-500/20 backdrop-blur-md border border-green-500 text-green-400 px-4 py-2 rounded-xl flex items-center gap-2 font-bold pointer-events-none transition-all duration-200 ${
+                            isMatched ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+                        }`}
                      >
                          <Check className="w-5 h-5" />
-                         Match!
-                     </motion.div>
+                         Match! Moving on...
+                     </div>
                 </div>
             </div>
         </div>
