@@ -14,6 +14,9 @@ const DashboardLayout = () => {
                     <a className="flex flex-col items-center justify-center text-on-surface-variant/70" href="/dashboard">
                         <span className="material-symbols-outlined text-xl">dashboard</span>
                     </a>
+                    <a className="flex flex-col items-center justify-center text-on-surface-variant/70" href="/learn">
+                        <span className="material-symbols-outlined text-xl">school</span>
+                    </a>
                     <a className="flex flex-col items-center justify-center text-on-surface-variant/70" href="/translator">
                         <span className="material-symbols-outlined text-xl">translate</span>
                     </a>

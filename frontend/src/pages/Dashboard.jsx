@@ -2,8 +2,9 @@ import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useUserStats } from '../hooks/useUserStats';
 import { useHistory } from '../hooks/useHistory';
+import { useLearnProgress } from '../hooks/useLearnProgress';
 import { Link } from 'react-router-dom';
-import { Play, BookOpen, Clock, Activity, Settings as SettingsIcon } from 'lucide-react';
+import { Play, BookOpen, Clock, Activity, Settings as SettingsIcon, GraduationCap } from 'lucide-react';
 
 const DashboardCard = ({ title, value, icon, description }) => (
     <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300">
@@ -22,6 +23,7 @@ const Dashboard = () => {
     const { user } = useAuth();
     const { stats, loading: statsLoading } = useUserStats();
     const { history, loading: historyLoading } = useHistory();
+    const { progress } = useLearnProgress();
 
     const renderHistoryCard = (item) => (
         <div key={item.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
@@ -49,7 +51,7 @@ const Dashboard = () => {
                 <p className="text-gray-400 text-lg">Here's your translation activity overview.</p>
             </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                 <DashboardCard 
                     title="Total Translations" 
                     value={statsLoading ? "..." : stats?.total_translations || 0}
@@ -68,6 +70,12 @@ const Dashboard = () => {
                     icon={<Play className="w-6 h-6" />}
                     description="Confidence level"
                 />
+                <DashboardCard 
+                    title="Learning XP" 
+                    value={progress.xp}
+                    icon={<GraduationCap className="w-6 h-6" />}
+                    description={`${progress.signsLearned.length} signs learned`}
+               />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

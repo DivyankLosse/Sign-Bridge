@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { useHistory } from '../hooks/useHistory';
-import { Clock, Search, Trash2, Calendar } from 'lucide-react';
+import { useLearnTranscript } from '../hooks/useLearnTranscript';
+import { Clock, Search, Trash2, Calendar, BookOpen } from 'lucide-react';
 
 const History = () => {
     const { history, loading, deleteItem } = useHistory();
+    const { transcripts } = useLearnTranscript();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const filteredHistory = history.filter(item => 
+    const combinedHistory = [
+        ...history.map(item => ({...item, type: 'translator'})),
+        ...transcripts.map(item => ({...item, type: 'learn', created_at: item.timestamp, original_text: item.sign}))
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const filteredHistory = combinedHistory.filter(item => 
         (item.predicted_text || item.original_text || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -52,18 +59,26 @@ const History = () => {
                                             <Calendar className="w-4 h-4" />
                                             {new Date(item.created_at).toLocaleString()}
                                         </span>
+                                        {item.type === 'learn' && (
+                                             <span className="flex items-center gap-1 bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-md text-xs font-bold">
+                                                  <BookOpen className="w-3 h-3" />
+                                                  Learn Mode
+                                             </span>
+                                        )}
                                         <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-xs font-mono">
                                             {Math.round((item.confidence || 0) * 100)}% Match
                                         </span>
                                     </div>
                                 </div>
-                                <button 
-                                    onClick={() => deleteItem(item.id)}
-                                    className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                                    title="Delete record"
-                                >
-                                    <Trash2 className="w-5 h-5" />
-                                </button>
+                                {item.type !== 'learn' && (
+                                    <button 
+                                        onClick={() => deleteItem(item.id)}
+                                        className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                        title="Delete record"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                )}
                             </div>
                         ))}
                     </div>

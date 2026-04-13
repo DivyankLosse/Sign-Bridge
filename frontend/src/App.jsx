@@ -13,6 +13,8 @@ import LiveRecognition from './pages/LiveRecognition';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
+import LearnPage from './pages/LearnPage';
+
 function App() {
   return (
     <BrowserRouter>
@@ -24,6 +26,7 @@ function App() {
           
           <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/learn" element={<LearnPage />} />
             <Route path="/translator" element={<LiveRecognition />} />
             <Route path="/history" element={<History />} />
             <Route path="/text-to-sign" element={<TextToSign />} />

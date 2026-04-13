@@ -26,6 +26,10 @@ const Sidebar = () => {
                     <span className="material-symbols-outlined">dashboard</span>
                     <span className="font-medium">Dashboard</span>
                 </NavLink>
+                <NavLink to="/learn" className={({isActive}) => `flex items-center gap-3 px-4 py-3 rounded-full transition-all group ${isActive ? 'bg-white/10 text-primary-container shadow-[0_0_15px_rgba(139,92,246,0.2)] font-medium' : 'text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5'}`}>
+                    <span className="material-symbols-outlined">school</span>
+                    <span className="font-medium">Learn</span>
+                </NavLink>
                 <NavLink to="/translator" className={({isActive}) => `flex items-center gap-3 px-4 py-3 rounded-full transition-all group ${isActive ? 'bg-white/10 text-primary-container shadow-[0_0_15px_rgba(139,92,246,0.2)] font-medium' : 'text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5'}`}>
                     <span className="material-symbols-outlined">translate</span>
                     <span className="font-medium">Translator</span>
