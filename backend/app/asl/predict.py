@@ -29,6 +29,25 @@ def _build_asl_model(num_classes: int):
     )
 
 
+def _build_hand_detector():
+    try:
+        import mediapipe as mp
+
+        solutions = getattr(mp, "solutions", None)
+        if solutions is not None and hasattr(solutions, "hands"):
+            hands_module = solutions.hands
+        else:
+            from mediapipe.python.solutions import hands as hands_module
+    except Exception:
+        from mediapipe.python.solutions import hands as hands_module
+
+    return hands_module.Hands(
+        static_image_mode=True,
+        max_num_hands=1,
+        min_detection_confidence=0.3,
+    )
+
+
 def load_model():
     global model, detector, labels
 
@@ -71,13 +90,7 @@ def load_model():
             )
 
     try:
-        import mediapipe as mp
-
-        detector = mp.solutions.hands.Hands(
-            static_image_mode=True,
-            max_num_hands=1,
-            min_detection_confidence=0.3,
-        )
+        detector = _build_hand_detector()
         print("Mediapipe Hands detector loaded")
     except Exception as detector_error:
         detector = None
