@@ -7,6 +7,7 @@ export const useCamera = (onFrame, options = {}) => {
     const [error, setError] = useState(null);
     const targetFps = options.targetFps ?? 10;
     const jpegQuality = options.jpegQuality ?? 0.92;
+    const lazyFrameData = options.lazyFrameData ?? false;
     
     const startCamera = async () => {
         try {
@@ -65,13 +66,18 @@ export const useCamera = (onFrame, options = {}) => {
 
                     const getFrameData = () => canvasRef.current.toDataURL('image/jpeg', jpegQuality);
                     if (onFrame) {
-                        onFrame({
-                            getFrameData,
-                        }, {
+                        const meta = {
                             video: videoRef.current,
                             canvas: canvasRef.current,
                             timestamp,
-                        });
+                            getFrameData,
+                        };
+
+                        if (lazyFrameData) {
+                            onFrame({ getFrameData }, meta);
+                        } else {
+                            onFrame(getFrameData(), meta);
+                        }
                     }
                 } catch (err) {
                     console.error("Frame processing error:", err);
@@ -90,7 +96,7 @@ export const useCamera = (onFrame, options = {}) => {
                 cancelAnimationFrame(animationFrameId);
             }
         };
-    }, [isStreaming, onFrame, targetFps, jpegQuality]);
+    }, [isStreaming, onFrame, targetFps, jpegQuality, lazyFrameData]);
 
     return { videoRef, canvasRef, isStreaming, startCamera, stopCamera, error };
 };

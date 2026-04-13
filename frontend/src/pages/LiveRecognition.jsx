@@ -238,7 +238,8 @@ const LiveRecognition = () => {
     // Camera Hook
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame, {
         targetFps: 8,
-        jpegQuality: 0.92
+        jpegQuality: 0.92,
+        lazyFrameData: true
     });
 
     useEffect(() => {
