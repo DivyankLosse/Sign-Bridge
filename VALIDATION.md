@@ -1,29 +1,36 @@
-# Production Validation Checklist: Sign Bridge Stable Rewrite
+# Sign Bridge - ASL-Only Production Validation
 
-This document maps all critical features to their verification status for the stable production release (excluding the AI training pipeline).
+This document defines the mandatory validation gates for the ASL-only production stabilization project.
 
-## 1. System Core
-- [ ] **Frontend Build**: `npm run build` succeeds without lint/type errors.
-- [ ] **Backend Health**: `/health` endpoint returns `{"status": "ok"}`.
-- [ ] **Infrastructure**: `render.yaml` environment variables match production requirements.
+## 1. Backend Service Validation
+| Test Case | Method | Expected Result | Status |
+|-----------|--------|-----------------|--------|
+| Startup Stability | Check stdout logs | `[Startup] ASL Model Status: READY` | [ ] |
+| Model Readiness | `GET /debug-model` | `ready: true`, `error: false` | [ ] |
+| Health Check | `GET /health` | `{"status": "ok"}` | [ ] |
+| Keep-Alive | `GET /ping` | `{"status": "alive", ...}` | [ ] |
 
-## 2. Authentication & DB
-- [ ] **Signup**: New user registration creates document in MongoDB Atlas.
-- [ ] **Login**: JWT token issued and stored in local storage.
-- [ ] **Persistent Auth**: User remains logged in after page refresh.
+## 2. WebSocket Connectivity (Nyquist Gate)
+| Test Case | Method | Expected Result | Status |
+|-----------|--------|-----------------|--------|
+| Protocol Upgrade | Connect to `/ws/recognize` | `101 Switching Protocols` | [ ] |
+| Handshake Logs | Check stdout logs | `[WS] Connection accepted` | [ ] |
+| Heartbeat | Send `{type: "heartbeat"}` | Receive `{"type": "heartbeat_ack"}` | [ ] |
+| Prediction Flow | Stream frames with hand | Prediction JSON received in UI | [ ] |
 
-## 3. Translator Stability (TFLite)
-- [ ] **Model Initialization**: `loader_debug.txt` confirms TFLite model is used first.
-- [ ] **Real-time Inference**: WebSocket receives predictions with <200ms latency.
-- [ ] **Resource Usage**: Backend RAM usage remains <400MB on Render Free tier.
-- [ ] **Frame Dropping**: Backend skips frames when processing to prevent buffer overflow.
+## 3. Resource & Performance
+| Test Case | Method | Expected Result | Status |
+|-----------|--------|-----------------|--------|
+| Memory Footprint | `docker stats` or Render Dashboard | < 450MB RAM usage | [ ] |
+| Startup Time | Measure startup duration | < 15 seconds to "Live" state | [ ] |
+| Error Resilience | Stop model load intentionally | API returns `MODEL_ERROR` gracefully | [ ] |
 
-## 4. Stability & Security
-- [ ] **CORS**: Requests are only allowed from `FRONTEND_URL` and `localhost`.
-- [ ] **AI Training Isolation**: `ai_training/` directory is ignored by git and build context.
-- [ ] **Error Handling**: Missing model or camera access shows user-friendly alerts.
+## 4. UI/UX Integrity
+| Test Case | Method | Expected Result | Status |
+|-----------|--------|-----------------|--------|
+| Mode Selector | Visit Live Recognition page | No AUTO/WORDS/SPELLING buttons visible | [ ] |
+| Status Indicator | UI Header | Shows "CONNECTED" pill when active | [ ] |
+| Prediction Display| Use Hand Sign | Real-time text appears in transcript | [ ] |
 
-## 5. Verification Commands
-- **Backend**: `uvicorn app.main:app --reload`
-- **Frontend**: `cd frontend && npm run dev`
-- **Build**: `cd frontend && npm run build`
+---
+**Approval Gate**: All items marked [x] before shipping to PRODUCTION.

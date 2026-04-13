@@ -12,8 +12,7 @@ const LiveRecognition = () => {
     const [useNlp, setUseNlp] = useState(true);
     const [transcript, setTranscript] = useState([]);
     const [systemError, setSystemError] = useState(null);
-    const [mode, setMode] = useState("AUTO");
-    const [threshold, setThreshold] = useState(0.7);
+    const [threshold] = useState(0.7);
     const [modelLoading, setModelLoading] = useState(false);
     const lastPredRef = useRef(null);
 
@@ -24,9 +23,9 @@ const LiveRecognition = () => {
     const handleFrame = useCallback((frameData) => {
         if (isActive && isConnected) {
             console.debug(`[Camera] Frame captured. Length: ${frameData.length}`);
-            sendFrame(frameData, useNlp, mode, threshold);
+            sendFrame(frameData, useNlp, "SPELL", threshold); // Aligned with backend-only SPELL mode
         }
-    }, [isActive, isConnected, useNlp, mode, threshold, sendFrame]);
+    }, [isActive, isConnected, useNlp, threshold, sendFrame]);
 
     // 3. Camera Hook (Uses handleFrame)
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
@@ -135,30 +134,9 @@ const LiveRecognition = () => {
                             </span>
                         )}
                     </h1>
-                    <p className="text-gray-400">Elite Hybrid System: WLASL Words + ASL Fingerspelling.</p>
+                    <p className="text-gray-400">Production-grade ASL Fingerspelling system.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    {/* Mode Selector Royale */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-1 flex items-center shadow-inner">
-                        <button 
-                            onClick={() => setMode("AUTO")}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'AUTO' ? 'bg-primary text-white shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            🟢 AUTO
-                        </button>
-                        <button 
-                            onClick={() => setMode("WORDS")}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'WORDS' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            ✋ WORDS
-                        </button>
-                        <button 
-                            onClick={() => setMode("SPELL")}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${mode === 'SPELL' ? 'bg-amber-600 text-white shadow-lg scale-105' : 'text-gray-400 hover:text-white'}`}
-                        >
-                            🔤 SPELLING
-                        </button>
-                    </div>
 
                     <label className="flex items-center gap-2 text-sm text-gray-300 ml-2">
                         <input 

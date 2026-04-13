@@ -3,9 +3,8 @@ from typing import List
 import json
 import traceback
 import asyncio
-# Removed unused imports
 from app.nlp_correction.grammar_corrector import grammar_corrector
-from app.sign_recognition.predict import predict_hybrid
+from app.sign_recognition.predict import predict_asl
 
 router = APIRouter(tags=["websocket"])
 
@@ -25,14 +24,13 @@ manager = ConnectionManager()
 
 @router.websocket("/ws/recognize")
 async def websocket_endpoint(websocket: WebSocket):
-    # Simplified for production stability - token validated in separate logic if needed
+    # Production stabilized: mandatory token removed for connectivity reliability
     print("[WS] Connection request received")
     await manager.connect(websocket)
     print("[WS] Connection accepted")
     
     frame_buffer = []
-    BUFFER_SIZE = 10 # Trigger inference every 10 frames for responsiveness
-    TARGET_SEQUENCE_LENGTH = 20 # Keep 20 frames for the Word Model
+    BUFFER_SIZE = 5 # Small buffer for real-time ASL fingerspelling
     
     is_processing = False
     
@@ -49,36 +47,21 @@ async def websocket_endpoint(websocket: WebSocket):
                     
                 frame = payload.get("frame")
                 if frame:
-                    # Always add to buffer
                     frame_buffer.append(frame)
-                    print(f"[WS] Frame received. Local Buffer size: {len(frame_buffer)}")
                     
+                    # Trigger inference frequently for ASL fingerspelling responsiveness
                     if len(frame_buffer) >= BUFFER_SIZE and not is_processing:
                         is_processing = True
                         try:
-                            # Process hybrid sequence off the main thread
-                            from app.sign_recognition.model_loader import model_loader
-                            print(f"[WS] MODEL READY: {model_loader.is_ready}")
-                            
-                            client_mode = payload.get("mode", "AUTO")
-                            client_threshold = payload.get("threshold", 0.7)
-                            print(f"[WS] Running inference (mode={client_mode}, threshold={client_threshold})")
-                            
-                            result = await asyncio.to_thread(
-                                predict_hybrid, 
-                                list(frame_buffer), 
-                                mode=client_mode, 
-                                threshold=client_threshold
-                            )
+                            # Run inference in a thread to keep the WS loop responsive
+                            result = await asyncio.to_thread(predict_asl, list(frame_buffer))
                             
                             raw_pred = result.get("prediction")
-                            pred_mode = result.get("mode", "spell")
-                            print(f"[WS] LANDMARKS DETECTED: {result.get('landmarks_detected')}")
-                            print(f"[WS] Prediction Result: {raw_pred} (Mode: {pred_mode}, Conf: {result.get('confidence', 0.0)})")
+                            confidence = result.get("confidence", 0.0)
                             
-                            # Apply NLP correction if enabled (mostly for word mode)
+                            # Apply NLP correction if enabled
                             corrected_text = raw_pred
-                            if raw_pred and raw_pred != "MODEL_NOT_LOADED":
+                            if raw_pred and raw_pred not in ["MODEL_NOT_LOADED", "MODEL_ERROR"]:
                                 if payload.get("nlp_correction", True):
                                     corrected_text = await asyncio.to_thread(grammar_corrector.correct, raw_pred)
                             
@@ -86,26 +69,29 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "type": "prediction",
                                 "raw_prediction": raw_pred,
                                 "corrected_prediction": corrected_text,
-                                "mode": pred_mode,
-                                "confidence": result.get("confidence", 0.0),
+                                "confidence": confidence,
                                 "landmarks_detected": result.get("landmarks_detected", False)
                             }
                             
                             await websocket.send_json(response)
-                            print(f"[WS] SENT TO CLIENT: {raw_pred}")
+                            if raw_pred:
+                                print(f"[WS] Prediction: {raw_pred} ({confidence:.2f})")
                             
-                            # Rolling window: keep last 20 frames for next inference cycle (preserves word model accuracy)
-                            frame_buffer = frame_buffer[-TARGET_SEQUENCE_LENGTH:]
+                            # Clear buffer after processing
+                            frame_buffer = []
                         finally:
                             is_processing = False
-                    elif len(frame_buffer) > 50: # Safety cap
+                    
+                    # Safety cap for buffer
+                    if len(frame_buffer) > 20:
                         frame_buffer = frame_buffer[-BUFFER_SIZE:]
-                    else:
-                        # Optional: skip specific log for production to avoid spam
-                        pass
             except Exception as e:
                 print(f"WS processing error: {e}")
                 traceback.print_exc()
-                is_processing = False # Reset on error
+                is_processing = False
     except WebSocketDisconnect:
+        print("[WS] Client disconnected")
+        manager.disconnect(websocket)
+    except Exception as e:
+        print(f"[WS] Critical connection error: {e}")
         manager.disconnect(websocket)

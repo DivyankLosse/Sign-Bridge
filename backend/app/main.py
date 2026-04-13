@@ -18,10 +18,18 @@ import asyncio
 
 @app.on_event("startup")
 async def startup_event():
-    # Disabling startup initialization to prevent memory spike on Render free tier
-    # models will rely on lazy loading (already implemented in model_loader.py)
-    # asyncio.create_task(initialize_resources())
-    print("Startup: Server binding to port. Model loading will occur on first request (Lazy Load).")
+    from app.sign_recognition.model_loader import model_loader
+    print("[Startup] Initializing ASL Model (Production Stabilization)...")
+    # Block startup until model is ready
+    await asyncio.to_thread(model_loader.init_model)
+    print(f"[Startup] ASL Model Status: {'READY' if model_loader.is_ready else 'ERROR'}")
+    
+    # Refresh animations cache
+    try:
+        animations = refresh_animations_cache()
+        print(f"[Startup] Animations Loaded: {len(animations)}")
+    except Exception as e:
+        print(f"[Startup] Animation cache error: {e}")
 
 # Mount static files for animations
 # Mount static files for animations
