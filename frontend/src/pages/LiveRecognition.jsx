@@ -1,33 +1,71 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useCamera } from '../hooks/useCamera';
-import { useWebSocket } from '../hooks/useWebSocket';
 import RecognitionOverlay from '../components/RecognitionOverlay';
 import PredictionDisplay from '../components/PredictionDisplay';
 import TranscriptPanel from '../components/TranscriptPanel';
-import { Play, Square, Settings, RefreshCw } from 'lucide-react';
-// import { useAuth } from '../context/AuthContext';
+import { Play, Square, RefreshCw } from 'lucide-react';
+import axios from 'axios';
 
 const LiveRecognition = () => {
     const [isActive, setIsActive] = useState(false);
-    const [useNlp, setUseNlp] = useState(true);
     const [transcript, setTranscript] = useState([]);
     const [systemError, setSystemError] = useState(null);
-    const [threshold] = useState(0.7);
     const [modelLoading, setModelLoading] = useState(false);
+    const [predictionData, setPredictionData] = useState(null);
+    const [isConnected, setIsConnected] = useState(true);
     const lastPredRef = useRef(null);
+    const isProcessingRef = useRef(false);
 
-    // 1. WebSocket Hook (Provides isConnected and sendFrame)
-    const { isConnected, predictionData, sendFrame } = useWebSocket(isActive);
-
-    // 2. Frame capture callback (Uses isConnected and sendFrame)
-    const handleFrame = useCallback((frameData) => {
-        if (isActive && isConnected) {
-            console.debug(`[Camera] Frame captured. Length: ${frameData.length}`);
-            sendFrame(frameData, useNlp, "SPELL", threshold); // Aligned with backend-only SPELL mode
+    const handleFrame = useCallback(async (frameData) => {
+        if (!isActive || isProcessingRef.current) return;
+        
+        isProcessingRef.current = true;
+        
+        try {
+            const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+            const response = await axios.post(`${apiBase}/asl/predict`, {
+                features: frameData
+            });
+            
+            const data = response.data;
+            if (data.error) {
+                if (!data.error.includes("No hands detected")) {
+                     console.error("Prediction error:", data.error);
+                }
+                setPredictionData(null);
+                lastPredRef.current = null;
+            } else if (data.prediction) {
+                const currentPred = data.prediction;
+                
+                setPredictionData({
+                    corrected_prediction: currentPred,
+                    raw_prediction: currentPred,
+                    confidence: 1.0,
+                    landmarks_detected: true
+                });
+                
+                if (currentPred && currentPred !== lastPredRef.current) {
+                    setTranscript(prev => [...prev, {
+                        text: currentPred,
+                        raw: currentPred,
+                        confidence: 1.0,
+                        timestamp: new Date()
+                    }]);
+                    lastPredRef.current = currentPred;
+                }
+            }
+            setIsConnected(true);
+            setSystemError(null);
+        } catch (error) {
+            console.error("Frame send error:", error);
+            setIsConnected(false);
+            setSystemError("Failed to connect to backend server");
+        } finally {
+            isProcessingRef.current = false;
         }
-    }, [isActive, isConnected, useNlp, threshold, sendFrame]);
+    }, [isActive]);
 
-    // 3. Camera Hook (Uses handleFrame)
+    // Camera Hook
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame);
 
     const toggleSession = () => {
@@ -42,77 +80,12 @@ const LiveRecognition = () => {
     };
 
     useEffect(() => {
-        if (predictionData) {
-            console.debug("[WS] Prediction received:", predictionData);
-            
-            if (predictionData.raw_prediction === "MODEL_NOT_LOADED") {
-                setSystemError("Backend is warming up: Sign recognition model is currently loading. Please wait 10-20 seconds.");
-                setModelLoading(true);
-            } else {
-                setModelLoading(false);
-                // Clear system error if we are getting valid (even if null) predictions
-                if (systemError && systemError.includes("warming up")) setSystemError(null);
-            }
-
-            // Show feedback if landmarks aren't detected
-            if (predictionData.landmarks_detected === false && isActive) {
-                // Only show if we haven't seen landmarks for a while (to avoid flickering)
-                // For now, let's just log it or show a subtle UI hint
-            }
-        }
-    }, [predictionData]);
-
-    useEffect(() => {
         return () => {
             if (isActive) stopCamera();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Update transcript when prediction stabilizes
-    useEffect(() => {
-        if (predictionData) {
-            const currentPred = predictionData.corrected_prediction;
-            console.debug(`[Transcript] Eval: Current='${currentPred}', Last='${lastPredRef.current}'`);
-            
-            if (currentPred && currentPred !== "MODEL_NOT_LOADED") {
-                if (currentPred !== lastPredRef.current) {
-                    console.log(`[Transcript] NEW PREDICTION: ${currentPred}`);
-                    setTranscript(prev => {
-                        const updated = [...prev, {
-                            text: currentPred,
-                            raw: predictionData.raw_prediction,
-                            confidence: predictionData.confidence,
-                            timestamp: new Date()
-                        }];
-                        console.log("[Transcript] Updated state:", updated);
-                        return updated;
-                    });
-                    lastPredRef.current = currentPred;
-                }
-            } else if (!currentPred) {
-                // If the model returns None (no prediction), 
-                // we reset the lastPredRef so the user can sign the same word again
-                lastPredRef.current = null;
-            }
-        }
-    }, [predictionData]);
-
-    // Debug logging & production validation
-    useEffect(() => {
-        const isProd = import.meta.env.PROD;
-        const apiBase = import.meta.env.VITE_API_BASE_URL;
-        
-        console.log(`[LiveRecognition] Environment: ${import.meta.env.MODE}`);
-        console.log(`[LiveRecognition] API Base: ${apiBase}`);
-        console.log(`[LiveRecognition] WebSocket: ${isConnected ? 'Connected' : 'Disconnected'}`);
-
-        if (isProd && (!apiBase || apiBase.includes('localhost'))) {
-            setSystemError("Production Configuration Error: The Web App is incorrectly attempting to connect to a local server. Please set VITE_API_BASE_URL in your hosting provider's dashboard.");
-        }
-    }, [isConnected]);
-
-    // Safety Guards (Production Hardening) - MUST BE AFTER ALL HOOKS
     if (systemError && !isActive) return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-surface p-6 text-center">
             <h2 className="text-xl font-bold text-white mb-4">Error loading translator</h2>
@@ -137,16 +110,6 @@ const LiveRecognition = () => {
                     <p className="text-gray-400">Production-grade ASL Fingerspelling system.</p>
                 </div>
                 <div className="flex items-center gap-4">
-
-                    <label className="flex items-center gap-2 text-sm text-gray-300 ml-2">
-                        <input 
-                            type="checkbox" 
-                            checked={useNlp} 
-                            onChange={(e) => setUseNlp(e.target.checked)} 
-                            className="bg-gray-700 border-gray-600 rounded text-primary focus:ring-primary h-4 w-4"
-                        />
-                        NLP
-                    </label>
                     <button 
                         onClick={toggleSession}
                         className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
@@ -215,7 +178,7 @@ const LiveRecognition = () => {
                 {/* Panel with strict null-guards */}
                 <div className="flex flex-col gap-4 overflow-hidden">
                     {predictionData ? (
-                        <PredictionDisplay data={predictionData} useNlp={useNlp} />
+                        <PredictionDisplay data={predictionData} useNlp={false} />
                     ) : (
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shrink-0 opacity-50">
                             <p className="text-xs text-on-surface-variant/50 uppercase font-bold tracking-widest">Awaiting Data...</p>
