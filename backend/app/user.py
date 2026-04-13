@@ -13,6 +13,20 @@ def _preferences_collection(db):
     return db.user_preferences
 
 
+def _estimate_active_minutes(history_items: list[dict]) -> int:
+    minute_buckets = set()
+
+    for item in history_items:
+        created_at = item.get("created_at")
+        if not created_at:
+            continue
+
+        bucket = created_at.replace(second=0, microsecond=0)
+        minute_buckets.add(bucket)
+
+    return len(minute_buckets)
+
+
 @router.get("/profile", response_model=User)
 def get_profile(current_user: User = Depends(get_current_user)):
     return current_user
@@ -79,7 +93,7 @@ def get_stats(
     average_confidence = (
         sum(float(item.get("confidence", 0)) for item in history_items) / total if total else 0.0
     )
-    active_time_minutes = max(1, total) if total else 0
+    active_time_minutes = _estimate_active_minutes(history_items)
     return UserStats(
         total_translations=total,
         active_time_minutes=active_time_minutes,
