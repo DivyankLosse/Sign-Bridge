@@ -28,7 +28,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
     await manager.connect(websocket)
     
     frame_buffer = []
-    BUFFER_SIZE = 5 # Collect 5 frames before doing majority vote (adjustable)
+    BUFFER_SIZE = 30 # Match WLASL sequence length (approx 1.5 - 2s @ 15-20fps)
     
     is_processing = False
     
@@ -45,38 +45,42 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     
                 frame = payload.get("frame")
                 if frame:
-                    # Only add to buffer if we're not currently busy
-                    if not is_processing:
-                        frame_buffer.append(frame)
+                    # Always add to buffer
+                    frame_buffer.append(frame)
                     
-                        if len(frame_buffer) >= BUFFER_SIZE:
-                            is_processing = True
-                            try:
-                                # Process batch off the main thread
-                                result = await asyncio.to_thread(predict_sign_batch, list(frame_buffer))
-                                
-                                raw_pred = result.get("prediction")
-                                
-                                # Apply NLP correction if enabled
-                                corrected_text = raw_pred
-                                if raw_pred and raw_pred != "MODEL_NOT_LOADED":
-                                    if payload.get("nlp_correction", True):
-                                        corrected_text = await asyncio.to_thread(grammar_corrector.correct, raw_pred)
-                                
-                                response = {
-                                    "type": "prediction",
-                                    "raw_prediction": raw_pred,
-                                    "corrected_prediction": corrected_text,
-                                    "confidence": result.get("confidence", 0.0),
-                                    "landmarks_detected": result.get("landmarks_detected", False)
-                                }
-                                
-                                await websocket.send_json(response)
-                                
-                                # Overlap frames to smooth prediction
-                                frame_buffer = frame_buffer[-2:] 
-                            finally:
-                                is_processing = False
+                    if len(frame_buffer) >= BUFFER_SIZE and not is_processing:
+                        is_processing = True
+                        try:
+                            # Process sequence off the main thread
+                            # We use predict_sign_sequence now
+                            from app.sign_recognition.predict import predict_sign_sequence
+                            result = await asyncio.to_thread(predict_sign_sequence, list(frame_buffer))
+                            
+                            raw_pred = result.get("prediction")
+                            
+                            # Apply NLP correction if enabled
+                            corrected_text = raw_pred
+                            if raw_pred and raw_pred != "MODEL_NOT_LOADED":
+                                if payload.get("nlp_correction", True):
+                                    corrected_text = await asyncio.to_thread(grammar_corrector.correct, raw_pred)
+                            
+                            response = {
+                                "type": "prediction",
+                                "raw_prediction": raw_pred,
+                                "corrected_prediction": corrected_text,
+                                "confidence": result.get("confidence", 0.0),
+                                "landmarks_detected": result.get("landmarks_detected", False)
+                            }
+                            
+                            await websocket.send_json(response)
+                            
+                            # Sliding window: keep some frames for context in next prediction
+                            # e.g. keep last 15 frames
+                            frame_buffer = frame_buffer[15:] 
+                        finally:
+                            is_processing = False
+                    elif len(frame_buffer) > 100: # Safety cap
+                        frame_buffer = frame_buffer[-BUFFER_SIZE:]
                     else:
                         # Optional: skip specific log for production to avoid spam
                         pass

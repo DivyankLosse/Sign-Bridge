@@ -153,7 +153,7 @@ const LiveRecognition = () => {
                                 autoPlay 
                                 playsInline 
                                 muted 
-                                className="absolute inset-0 w-full h-full object-cover hidden"
+                                className="absolute inset-0 w-full h-full object-cover opacity-0 pointer-events-none"
                             />
                             {/* Visible canvas for streaming & overlay */}
                             <canvas 

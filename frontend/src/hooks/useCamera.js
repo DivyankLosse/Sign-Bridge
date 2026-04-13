@@ -39,15 +39,25 @@ export const useCamera = (onFrame) => {
 
         const processFrame = (timestamp) => {
             if (!isStreaming || !canvasRef.current || !videoRef.current) return;
+            
+            // Check if video is actually ready and playing
+            if (videoRef.current.readyState < 2) {
+                animationFrameId = requestAnimationFrame(processFrame);
+                return;
+            }
 
             // Throttle to target FPS
             if (timestamp - lastProcessTime >= frameInterval) {
                 lastProcessTime = timestamp;
-                const context = canvasRef.current.getContext('2d');
-                context.drawImage(videoRef.current, 0, 0, 640, 480);
-                
-                const frameData = canvasRef.current.toDataURL('image/jpeg', 0.8);
-                if (onFrame) onFrame(frameData);
+                try {
+                    const context = canvasRef.current.getContext('2d');
+                    context.drawImage(videoRef.current, 0, 0, 640, 480);
+                    
+                    const frameData = canvasRef.current.toDataURL('image/jpeg', 0.8);
+                    if (onFrame) onFrame(frameData);
+                } catch (err) {
+                    console.error("Frame processing error:", err);
+                }
             }
             
             animationFrameId = requestAnimationFrame(processFrame);
