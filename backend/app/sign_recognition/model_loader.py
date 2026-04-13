@@ -60,6 +60,7 @@ class ModelLoader:
             self._is_initialized = True
         except Exception as e:
             log_status(f"FATAL ERROR during dual model initialization: {e}")
+            self._is_initialized = True # Prevent infinite retry loop on free tier
 
     @property
     def word_model(self):
