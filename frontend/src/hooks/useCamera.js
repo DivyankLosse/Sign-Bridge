@@ -62,10 +62,12 @@ export const useCamera = (onFrame, options = {}) => {
                         return;
                     }
                     context.drawImage(videoRef.current, 0, 0, 640, 480);
-                    
-                    const frameData = canvasRef.current.toDataURL('image/jpeg', jpegQuality);
+
+                    const getFrameData = () => canvasRef.current.toDataURL('image/jpeg', jpegQuality);
                     if (onFrame) {
-                        onFrame(frameData, {
+                        onFrame({
+                            getFrameData,
+                        }, {
                             video: videoRef.current,
                             canvas: canvasRef.current,
                             timestamp,

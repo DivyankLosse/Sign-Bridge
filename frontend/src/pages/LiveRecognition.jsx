@@ -8,7 +8,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../utils/constants';
 import api from '../services/api';
 
-const REQUESTS_PER_SECOND = 5;
+const REQUESTS_PER_SECOND = 8;
 const REQUEST_INTERVAL_MS = 1000 / REQUESTS_PER_SECOND;
 const STABLE_FRAME_THRESHOLD = 2;
 const CLEAR_PREDICTION_AFTER_MISSES = 4;
@@ -112,7 +112,7 @@ const LiveRecognition = () => {
         }
     }, []);
 
-    const handleFrame = useCallback(async (frameData, meta) => {
+    const handleFrame = useCallback(async (framePayload, meta) => {
         if (!isActive || isProcessingRef.current) return;
 
         const now = performance.now();
@@ -138,8 +138,9 @@ const LiveRecognition = () => {
                 return;
             }
 
+            const fallbackFrameData = framePayload?.getFrameData?.();
             const response = await axios.post(`${API_BASE_URL}/asl/predict`, {
-                features: Array.isArray(browserLandmarks) && browserLandmarks.length === 63 ? browserLandmarks : frameData
+                features: Array.isArray(browserLandmarks) && browserLandmarks.length === 63 ? browserLandmarks : fallbackFrameData
             });
             
             const data = response.data;
@@ -236,7 +237,7 @@ const LiveRecognition = () => {
 
     // Camera Hook
     const { videoRef, canvasRef, startCamera, stopCamera, error: cameraError } = useCamera(handleFrame, {
-        targetFps: 4,
+        targetFps: 8,
         jpegQuality: 0.92
     });
 
