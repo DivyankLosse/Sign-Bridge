@@ -7,29 +7,43 @@ from pathlib import Path
 
 model = None
 detector = None
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+labels = []
 
 def load_model():
-    global model, detector
-    model_path = BASE_DIR / "models/asl_model.pkl"
-    if os.path.exists("models/asl_model.pkl"):
-        model_path = Path("models/asl_model.pkl")
+    global model, detector, labels
+    
+    # User requested fix: Use os path join and print directory
+    # Loading the REAL trained model (.h5) instead of .pkl as .pkl has not been pushed to the repo
+    MODEL_PATH = os.path.join(os.getcwd(), "backend", "trained_models", "asl_39_model.h5")
+    LABELS_PATH = os.path.join(os.getcwd(), "backend", "trained_models", "asl_39_labels.txt")
+    
+    # Fallback if running directly inside backend folder
+    if not os.path.exists(MODEL_PATH):
+        MODEL_PATH = os.path.join(os.getcwd(), "trained_models", "asl_39_model.h5")
+        LABELS_PATH = os.path.join(os.getcwd(), "trained_models", "asl_39_labels.txt")
         
+    print("Loading model from:", MODEL_PATH)
+    
     try:
-        with open(model_path, "rb") as f:
-            model = pickle.load(f)
-        print("✅ ASL model loaded")
+        import tensorflow as tf
+        model = tf.keras.models.load_model(MODEL_PATH)
+        print("✅ Model loaded successfully")
+        
+        # Load labels
+        if os.path.exists(LABELS_PATH):
+            with open(LABELS_PATH, "r") as f:
+                labels = [line.strip() for line in f.readlines()]
+            print(f"✅ Loaded {len(labels)} labels")
         
         # Load mediapipe
-        import mediapipe as mp
         from mediapipe.tasks import python
         from mediapipe.tasks.python import vision
         
-        task_path = BASE_DIR / "models/hand_landmarker.task"
-        if os.path.exists("models/hand_landmarker.task"):
-            task_path = Path("models/hand_landmarker.task")
+        TASK_PATH = os.path.join(os.getcwd(), "backend", "app", "models", "hand_landmarker.task")
+        if not os.path.exists(TASK_PATH):
+            TASK_PATH = os.path.join(os.getcwd(), "app", "models", "hand_landmarker.task")
             
-        base_options = python.BaseOptions(model_asset_path=str(task_path))
+        base_options = python.BaseOptions(model_asset_path=TASK_PATH)
         options = vision.HandLandmarkerOptions(base_options=base_options, num_hands=1)
         detector = vision.HandLandmarker.create_from_options(options)
         print("✅ Mediapipe model loaded")
@@ -62,7 +76,7 @@ def get_landmarks(base64_string):
     return np.array(landmarks)
 
 def predict_sign(frame_data):
-    global model
+    global model, labels
     if model is None:
         return {"error": "Model not loaded"}
 
@@ -71,7 +85,13 @@ def predict_sign(frame_data):
         if landmarks is None:
             return {"prediction": "", "error": "No hands detected"}
             
-        prediction = model.predict([landmarks])[0]
-        return {"prediction": str(prediction)}
+        prediction_probs = model.predict(np.array([landmarks]))[0]
+        max_index = np.argmax(prediction_probs)
+        
+        predicted_label = str(max_index)
+        if labels and max_index < len(labels):
+            predicted_label = labels[max_index]
+            
+        return {"prediction": predicted_label}
     except Exception as e:
         return {"error": f"Prediction failed: {e}"}

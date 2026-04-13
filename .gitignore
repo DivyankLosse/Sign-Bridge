@@ -41,9 +41,13 @@ MANIFEST
 Datasets/
 # Allow backend/trained_models to be pushed
 !backend/trained_models/
-*.pt
-*.tflite
-*.pickle
+# Ignore huge AI training datasets
+ai_training/*.pickle
+ai_training/*.pkl
+# *.pt
+# *.tflite
+# *.pickle
+# *.pkl
 
 # Database
 papago.db
