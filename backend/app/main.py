@@ -6,14 +6,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from app.config import settings
-from app.auth import routes as auth_routes
 from app.asl.routes import router as asl_router
-from app.text_to_sign import routes as text_routes
-from app.history import routes as history_routes
-from app.text_to_sign.mapper import refresh_animations_cache
-from app.nlp_correction.routes import router as nlp_router
-from app.personalization.routes import router as personalization_router
-
 from app.asl.predict import load_model, model
 
 app = FastAPI(title="Papago Sign API", version="1.0.0")
@@ -23,13 +16,6 @@ def startup_event():
     print("[Startup] Initializing ASL Model...")
     load_model()
     
-    # Refresh animations cache
-    try:
-        animations = refresh_animations_cache()
-        print(f"[Startup] Animations Loaded: {len(animations)}")
-    except Exception as e:
-        print(f"[Startup] Animation cache error: {e}")
-
 # Mount static files for animations
 base_dir = Path(__file__).resolve().parent.parent
 static_path = base_dir / "static"
@@ -58,12 +44,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_routes.router)
 app.include_router(asl_router, prefix="/asl")
-app.include_router(text_routes.router)
-app.include_router(history_routes.router)
-app.include_router(nlp_router)
-app.include_router(personalization_router)
 
 @app.get("/")
 def read_root():
