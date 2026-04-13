@@ -240,7 +240,7 @@ def load_model():
     except Exception as detector_error:
         detector = None
         fallback_detector = None
-        print(f"Failed to load Mediapipe model: {detector_error}")
+        print(f"Mediapipe detector unavailable; client-landmarks-only mode enabled: {detector_error}")
 
 
 def get_landmarks(base64_string):
@@ -285,6 +285,8 @@ def predict_sign(frame_data):
         landmarks = _coerce_landmarks(frame_data)
         used_client_landmarks = landmarks is not None
         if landmarks is None:
+            if detector is None and fallback_detector is None:
+                return {"error": "Server hand detector unavailable"}
             landmarks = get_landmarks(frame_data)
         if landmarks is None:
             return {"prediction": "", "error": "No hands detected"}

@@ -144,6 +144,13 @@ const LiveRecognition = () => {
             
             const data = response.data;
             if (data.error) {
+                if (data.error.includes("Server hand detector unavailable")) {
+                    console.error("Prediction error:", data.error);
+                    setSystemError("Browser hand detector unavailable and server fallback is disabled.");
+                    setDetectorStatus('error');
+                    setIsConnected(true);
+                    return;
+                }
                 if (!data.error.includes("No hands detected")) {
                      console.error("Prediction error:", data.error);
                      setSystemError(data.error);
