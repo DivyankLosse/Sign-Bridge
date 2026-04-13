@@ -90,6 +90,11 @@ def read_root():
         "environment": settings.ENVIRONMENT
     }
 
+@app.get("/debug-model")
+def debug_model():
+    """Detailed model status for remote diagnostics."""
+    return model_loader.status
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}

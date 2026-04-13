@@ -31,7 +31,9 @@ class ModelLoader:
                         tf.config.experimental.set_memory_growth(gpu, True)
                 except RuntimeError as e:
                     log_status(f"Memory growth error: {e}")
- 
+        log_status(f"WORD PATH (Absolute): {os.path.abspath(settings.WORD_MODEL_PATH)}")
+        log_status(f"SPELL PATH (Absolute): {os.path.abspath(settings.SPELL_MODEL_PATH)}")
+
         try:
             # 1. Load Word Model (WLASL Top 100)
             if os.path.exists(settings.WORD_MODEL_PATH):
@@ -85,9 +87,20 @@ class ModelLoader:
 
     @property
     def is_ready(self):
-        if not self._is_initialized:
-            self.init_model()
-        return (self._word_model is not None) and (self._spell_model is not None)
+        # We don't trigger lazy init here to avoid blocking status checks
+        return self._is_initialized and (self._word_model is not None) and (self._spell_model is not None)
+
+    @property
+    def status(self):
+        return {
+            "initialized": self._is_initialized,
+            "word_model_loaded": self._word_model is not None,
+            "spell_model_loaded": self._spell_model is not None,
+            "word_labels_count": len(self._word_labels),
+            "spell_labels_count": len(self._spell_labels),
+            "word_path": os.path.abspath(settings.WORD_MODEL_PATH),
+            "spell_path": os.path.abspath(settings.SPELL_MODEL_PATH)
+        }
 
     def predict_word(self, input_data):
         if not self.word_model:

@@ -79,12 +79,16 @@ const LiveRecognition = () => {
             if (currentPred && currentPred !== "MODEL_NOT_LOADED") {
                 if (currentPred !== lastPredRef.current) {
                     console.log(`[Transcript] NEW PREDICTION: ${currentPred}`);
-                    setTranscript(prev => [...prev, {
-                        text: currentPred,
-                        raw: predictionData.raw_prediction,
-                        confidence: predictionData.confidence,
-                        timestamp: new Date()
-                    }]);
+                    setTranscript(prev => {
+                        const updated = [...prev, {
+                            text: currentPred,
+                            raw: predictionData.raw_prediction,
+                            confidence: predictionData.confidence,
+                            timestamp: new Date()
+                        }];
+                        console.log("[Transcript] Updated state:", updated);
+                        return updated;
+                    });
                     lastPredRef.current = currentPred;
                 }
             } else if (!currentPred) {

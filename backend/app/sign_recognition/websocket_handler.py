@@ -28,7 +28,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
     await manager.connect(websocket)
     
     frame_buffer = []
-    BUFFER_SIZE = 20 # User requested snappy 20 frames
+    BUFFER_SIZE = 10 # Trigger inference every 10 frames for responsiveness
+    TARGET_SEQUENCE_LENGTH = 20 # Keep 20 frames for the Word Model
     
     is_processing = False
     
@@ -53,7 +54,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                         is_processing = True
                         try:
                             # Process hybrid sequence off the main thread
-                            from app.sign_recognition.predict import predict_hybrid
+                            from app.sign_recognition.model_loader import model_loader
+                            print(f"[WS] MODEL READY: {model_loader.is_ready}")
                             
                             client_mode = payload.get("mode", "AUTO")
                             client_threshold = payload.get("threshold", 0.7)
@@ -68,6 +70,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             
                             raw_pred = result.get("prediction")
                             pred_mode = result.get("mode", "spell")
+                            print(f"[WS] LANDMARKS DETECTED: {result.get('landmarks_detected')}")
                             print(f"[WS] Prediction Result: {raw_pred} (Mode: {pred_mode}, Conf: {result.get('confidence', 0.0)})")
                             
                             # Apply NLP correction if enabled (mostly for word mode)
@@ -86,9 +89,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             }
                             
                             await websocket.send_json(response)
+                            print(f"[WS] SENT TO CLIENT: {raw_pred}")
                             
-                            # Sliding window: keep buffer for smoothness
-                            frame_buffer = frame_buffer[10:] 
+                            # Rolling window: keep last 20 frames for next inference cycle (preserves word model accuracy)
+                            frame_buffer = frame_buffer[-TARGET_SEQUENCE_LENGTH:]
                         finally:
                             is_processing = False
                     elif len(frame_buffer) > 50: # Safety cap

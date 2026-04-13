@@ -18,7 +18,11 @@ def predict_hybrid(base64_frames, mode="AUTO", threshold=0.7):
     - mode: "AUTO", "WORDS", "SPELL"
     """
     if not model_loader.is_ready:
-        return {"prediction": "MODEL_NOT_LOADED", "confidence": 0.0, "mode": "error"}
+        print("[Predict] Cold start detected: Force loading models...")
+        model_loader.init_model()
+        
+    if not model_loader.is_ready:
+        return {"prediction": "MODEL_NOT_LOADED", "confidence": 0.0, "mode": "error", "landmarks_detected": False}
 
     if not base64_frames or not isinstance(base64_frames, list):
         return {"prediction": None, "confidence": 0.0, "mode": "error"}
