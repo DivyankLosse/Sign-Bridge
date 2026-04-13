@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Any
 from datetime import datetime
 
@@ -16,7 +16,9 @@ class User(UserBase):
     is_active: bool
     created_at: datetime
     
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
 
 class Token(BaseModel):
     access_token: str
@@ -31,7 +33,8 @@ class UserPreferences(BaseModel):
     sign_language: str = "asl"
     avatar_enabled: bool = False
     
-    model_config = ConfigDict(populate_by_name=True)
+    class Config:
+        allow_population_by_field_name = True
 
 class UserCorrection(BaseModel):
     id: Optional[str] = None
@@ -40,7 +43,9 @@ class UserCorrection(BaseModel):
     corrected_text: str
     created_at: datetime
     
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    class Config:
+        orm_mode = True
+        allow_population_by_field_name = True
 
 class UserStats(BaseModel):
     total_translations: int
