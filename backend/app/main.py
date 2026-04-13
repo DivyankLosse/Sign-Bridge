@@ -18,22 +18,10 @@ import asyncio
 
 @app.on_event("startup")
 async def startup_event():
-    # Helper to load models and refresh cache in background
-    async def initialize_resources():
-        from app.sign_recognition.model_loader import model_loader
-        # Run synchronous init_model in a thread to avoid blocking the event loop
-        await asyncio.to_thread(model_loader.init_model)
-        
-        animations = refresh_animations_cache()
-        print(f"\n{'='*40}")
-        print(f"Background Initialization Complete")
-        print(f"Models Initialized: {model_loader._is_initialized}")
-        print(f"Animations Loaded: {len(animations)}")
-        print(f"{'='*40}\n")
-
-    # Start initialization in background and return immediately
-    asyncio.create_task(initialize_resources())
-    print("Startup: Server binding to port. Model loading moved to background thread.")
+    # Disabling startup initialization to prevent memory spike on Render free tier
+    # models will rely on lazy loading (already implemented in model_loader.py)
+    # asyncio.create_task(initialize_resources())
+    print("Startup: Server binding to port. Model loading will occur on first request (Lazy Load).")
 
 # Mount static files for animations
 # Mount static files for animations

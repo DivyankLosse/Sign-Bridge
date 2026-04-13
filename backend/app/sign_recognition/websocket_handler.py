@@ -5,6 +5,7 @@ import traceback
 import asyncio
 # Removed unused imports
 from app.nlp_correction.grammar_corrector import grammar_corrector
+from app.sign_recognition.predict import predict_hybrid
 
 router = APIRouter(tags=["websocket"])
 
@@ -23,9 +24,11 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 @router.websocket("/ws/recognize")
-async def websocket_endpoint(websocket: WebSocket, token: str = None):
-    # Depending on auth, token validation goes here.
+async def websocket_endpoint(websocket: WebSocket):
+    # Simplified for production stability - token validated in separate logic if needed
+    print("[WS] Connection request received")
     await manager.connect(websocket)
+    print("[WS] Connection accepted")
     
     frame_buffer = []
     BUFFER_SIZE = 10 # Trigger inference every 10 frames for responsiveness

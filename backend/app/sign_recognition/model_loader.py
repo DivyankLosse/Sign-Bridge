@@ -46,17 +46,11 @@ class ModelLoader:
             else:
                 log_status(f"FAILURE: Word model not found at {settings.WORD_MODEL_PATH}")
  
-            # 2. Load Spell Model (ASL 39)
-            if os.path.exists(settings.SPELL_MODEL_PATH):
-                log_status(f"Loading Spell model from {settings.SPELL_MODEL_PATH}")
-                self._spell_model = tf.keras.models.load_model(settings.SPELL_MODEL_PATH, compile=False)
-                if os.path.exists(settings.SPELL_LABELS_PATH):
-                    with open(settings.SPELL_LABELS_PATH, "r") as f:
-                        self._spell_labels = [line.strip() for line in f.readlines()]
-                log_status(f"SUCCESS: Spell model loaded with {len(self._spell_labels)} labels")
-            else:
-                log_status(f"FAILURE: Spell model not found at {settings.SPELL_MODEL_PATH}")
- 
+            # 2. Disabled Spell Model for memory optimization on Render free tier
+            log_status("Memory Optimization: Spell model is DISABLED to conserve RAM.")
+            self._spell_model = None
+            self._spell_labels = []
+
             self._is_initialized = True
         except Exception as e:
             log_status(f"FATAL ERROR during dual model initialization: {e}")
@@ -88,8 +82,8 @@ class ModelLoader:
 
     @property
     def is_ready(self):
-        # We don't trigger lazy init here to avoid blocking status checks
-        return self._is_initialized and (self._word_model is not None) and (self._spell_model is not None)
+        # Memory Optimized: Only word model is required for ready status
+        return self._is_initialized and (self._word_model is not None)
 
     @property
     def status(self):
