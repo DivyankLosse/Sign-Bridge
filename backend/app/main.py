@@ -7,14 +7,15 @@ from datetime import datetime, timezone
 
 from app.config import settings
 from app.asl.routes import router as asl_router
-from app.asl.predict import load_model, model
+from app.auth import router as auth_router
+import app.asl.predict as asl_predict
 
 app = FastAPI(title="Papago Sign API", version="1.0.0")
 
 @app.on_event("startup")
 def startup_event():
     print("[Startup] Initializing ASL Model...")
-    load_model()
+    asl_predict.load_model()
     
 # Mount static files for animations
 base_dir = Path(__file__).resolve().parent.parent
@@ -44,11 +45,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(asl_router, prefix="/asl")
 
 @app.get("/")
 def read_root():
-    is_loaded = model is not None
+    is_loaded = asl_predict.model is not None
     return {
         "message": "Welcome to Papago Sign API", 
         "model_loaded": is_loaded, 
