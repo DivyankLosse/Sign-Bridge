@@ -41,11 +41,16 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const data = await authService.login(email, password);
-    setToken(data.access_token);
-    localStorage.setItem('token', data.access_token);
-    
-    // Fetch user profile immediately
-    const userData = await authService.getCurrentUser();
+    const authToken = data.token || data.access_token;
+
+    if (!authToken) {
+      throw new Error('Login response did not include an auth token.');
+    }
+
+    setToken(authToken);
+    localStorage.setItem('token', authToken);
+
+    const userData = data.user || await authService.getCurrentUser();
     setUser(userData);
     return userData;
   };

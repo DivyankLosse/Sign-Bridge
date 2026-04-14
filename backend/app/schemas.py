@@ -25,6 +25,14 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+
+class LoginResponse(BaseModel):
+    token: str
+    access_token: str
+    token_type: str
+    user: User
+
+
 class TokenData(BaseModel):
     email: Optional[str] = None
 

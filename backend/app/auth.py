@@ -11,7 +11,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from app.config import settings
 from app.database import get_db
-from app.schemas import Token, User, UserCreate
+from app.schemas import LoginResponse, User, UserCreate
 
 router = APIRouter()
 
@@ -143,14 +143,21 @@ def signup(payload: UserCreate, db=Depends(get_db)):
     return _serialize_user(user_doc)
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)):
     users = _users_collection(db)
     user = users.find_one({"email": form_data.username})
     if not user or not _verify_password(form_data.password, user.get("password_hash", "")):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
-    return Token(access_token=_create_access_token(user["email"]), token_type="bearer")
+    access_token = _create_access_token(user["email"])
+    serialized_user = _serialize_user(user)
+    return LoginResponse(
+        token=access_token,
+        access_token=access_token,
+        token_type="bearer",
+        user=serialized_user,
+    )
 
 
 @router.get("/me", response_model=User)
