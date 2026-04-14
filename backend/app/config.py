@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     
     FRONTEND_URL: str = "http://localhost:5173"
     CORS_ORIGINS: str = ""
-    CORS_ALLOW_ORIGIN_REGEX: str = r"^https://.*\.onrender\.com$"
+    CORS_ALLOW_ORIGIN_REGEX: str = r"^https://([a-zA-Z0-9-]+\.)*(onrender\.com|vercel\.app)$"
     ENVIRONMENT: str = "development"
     ANIMATIONS_PATH: str = str(BASE_DIR / "static" / "animations")
 
