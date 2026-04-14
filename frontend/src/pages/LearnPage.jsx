@@ -93,7 +93,6 @@ const LearnPage = () => {
                 <LevelMap 
                     onSelectLevel={handleLevelSelect} 
                     selectedLevel={selectedLevel} 
-                    onBack={handleBackToMap} 
                 />
             )}
         </div>

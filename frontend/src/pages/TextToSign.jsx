@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import TopNavbar from '../components/TopNavbar';
 import api from '../services/api';
 import { API_BASE_URL } from '../utils/constants';
@@ -9,15 +9,29 @@ const TextToSign = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
-    const videoRef = useRef(null);
-
+    const [statusMessage, setStatusMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const handleGenerate = async () => {
-        if (!text.trim()) return;
+        if (!text.trim()) {
+            setErrorMessage('Enter text before generating sign animations.');
+            return;
+        }
         
         setIsLoading(true);
+        setErrorMessage('');
+        setStatusMessage('');
         try {
             const response = await api.post('/translate/text', { text });
             const paths = response.data?.animations || [];
+            const result = response.data?.result || '';
+
+            if (paths.length === 0) {
+                setAnimations([]);
+                setCurrentIndex(0);
+                setIsPlaying(false);
+                setErrorMessage('No matching ASL animations were found for that text.');
+                return;
+            }
             
             // Map paths to full URLs if needed (backend serves /static)
             const fullUrls = paths.map(p => p.startsWith('http') ? p : `${API_BASE_URL}${p}`);
@@ -25,6 +39,7 @@ const TextToSign = () => {
             setAnimations(fullUrls);
             setCurrentIndex(0);
             setIsPlaying(true);
+            setStatusMessage(`Prepared ${paths.length} sign clip${paths.length === 1 ? '' : 's'} for: ${result || text.trim()}`);
             try {
                 await api.post('/history', {
                     type: 'text-to-sign',
@@ -32,12 +47,11 @@ const TextToSign = () => {
                     confidence: 1.0,
                     source: 'text-to-sign',
                 });
-            } catch (historyError) {
-                console.error('Failed to persist text-to-sign history', historyError);
+            } catch {
+                setStatusMessage('Animations generated, but saving to history failed.');
             }
         } catch (error) {
-            console.error("Translation failed:", error);
-            alert("Failed to fetch animations. Please check if backend is running.");
+            setErrorMessage(error.userMessage || 'Failed to fetch animations. Please check if the backend is running.');
         } finally {
             setIsLoading(false);
         }
@@ -57,29 +71,37 @@ const TextToSign = () => {
                 <span className="px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-full border border-primary/20 tracking-wider">v2.4 PRO</span>
             </TopNavbar>
             
-            <div className="p-10 max-w-7xl mx-auto w-full space-y-10">
+            <div className="p-4 md:p-8 lg:p-10 max-w-7xl mx-auto w-full space-y-8 md:space-y-10 pb-24 md:pb-10">
                 <section className="relative">
                     <div className="absolute -top-10 -right-10 w-64 h-64 bg-primary/10 blur-[100px] rounded-full"></div>
-                    <div className="glass-panel rounded-lg p-8 relative overflow-hidden">
-                        <div className="flex justify-between items-center mb-6">
+                    <div className="glass-panel rounded-lg p-5 md:p-8 relative overflow-hidden">
+                        <div className="flex flex-col gap-3 md:flex-row md:justify-between md:items-center mb-6">
                             <label className="text-on-surface-variant font-medium text-sm flex items-center gap-2">
                                 <span className="material-symbols-outlined text-primary text-lg">edit_note</span>
                                 Enter text to translate to sign language
                             </label>
+                            {statusMessage && (
+                                <p className="text-xs md:text-sm text-emerald-300">{statusMessage}</p>
+                            )}
                         </div>
                         <div className="relative group">
                             <textarea 
-                                className="w-full h-48 bg-surface-container-lowest/50 border-none ring-1 ring-outline-variant/20 rounded-lg p-6 text-xl font-medium placeholder:text-on-surface-variant/30 focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all resize-none" 
+                                className="w-full h-40 md:h-48 bg-surface-container-lowest/50 border-none ring-1 ring-outline-variant/20 rounded-lg p-4 md:p-6 text-base md:text-xl font-medium placeholder:text-on-surface-variant/30 focus:ring-2 focus:ring-primary/40 focus:outline-none transition-all resize-none" 
                                 placeholder="Type a phrase like 'Hello' or 'A B C'..."
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                             ></textarea>
                         </div>
+                        {errorMessage && (
+                            <div className="mt-4 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">
+                                {errorMessage}
+                            </div>
+                        )}
                         <div className="mt-8 flex justify-center">
                             <button 
                                 onClick={handleGenerate}
                                 disabled={isLoading}
-                                className="gradient-button text-white font-extrabold px-12 py-5 rounded-full flex items-center gap-3 text-lg hover:shadow-[0_0_30px_rgba(160,120,255,0.4)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                                className="gradient-button text-white font-extrabold px-7 md:px-12 py-4 md:py-5 rounded-full flex items-center gap-3 text-base md:text-lg hover:shadow-[0_0_30px_rgba(160,120,255,0.4)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                             >
                                 {isLoading ? "Processing..." : "Generate Signs"}
                                 <span className="material-symbols-outlined">rocket_launch</span>
@@ -89,7 +111,7 @@ const TextToSign = () => {
                 </section>
                 
                 <section className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                         <h3 className="text-lg font-bold text-on-surface flex items-center gap-3">
                             <span className="w-8 h-[2px] bg-primary rounded-full"></span>
                             Avatar Representation
@@ -107,7 +129,6 @@ const TextToSign = () => {
                             {animations.length > 0 ? (
                                 <video
                                     key={animations[currentIndex]}
-                                    ref={videoRef}
                                     src={animations[currentIndex]}
                                     autoPlay
                                     onEnded={handleVideoEnd}
@@ -132,7 +153,7 @@ const TextToSign = () => {
                         </div>
 
                         {/* Sequence List */}
-                        <div className="w-full lg:w-80 glass-panel rounded-2xl p-6 space-y-4 max-h-[450px] overflow-y-auto no-scrollbar">
+                        <div className="w-full lg:w-80 glass-panel rounded-2xl p-5 md:p-6 space-y-4 max-h-[450px] overflow-y-auto no-scrollbar">
                             <h4 className="text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest">Animation Queue</h4>
                             <div className="space-y-2">
                                 {animations.length > 0 ? animations.map((url, i) => {
@@ -156,7 +177,9 @@ const TextToSign = () => {
                                         </div>
                                     );
                                 }) : (
-                                    <p className="text-xs text-on-surface-variant/30 italic">No queue active</p>
+                                    <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-6 text-center text-xs text-on-surface-variant/50 italic">
+                                        No queue active yet. Generate a phrase to preview ASL clips.
+                                    </div>
                                 )}
                             </div>
                         </div>

@@ -56,8 +56,7 @@ export const CameraTrainer = ({
                     setModelStatus('ready');
                     setStatusMessage('');
                 }
-            } catch (error) {
-                console.error('[CameraTrainer] Failed to load browser hand detector', error);
+            } catch {
                 handLandmarkerRef.current = null;
                 handLandmarkerReadyRef.current = false;
                 if (!cancelled) {
@@ -91,8 +90,7 @@ export const CameraTrainer = ({
             }
 
             return hand.flatMap((landmark) => [landmark.x, landmark.y, landmark.z]);
-        } catch (error) {
-            console.error('[CameraTrainer] Browser hand detection failed', error);
+        } catch {
             return undefined;
         }
     }, []);
@@ -138,7 +136,6 @@ export const CameraTrainer = ({
                     return;
                 }
 
-                console.error('[CameraTrainer] Prediction error', data.error);
                 setModelStatus('error');
                 setStatusMessage('AI recognition is unavailable right now.');
                 setPredictionData(null);
@@ -194,8 +191,7 @@ export const CameraTrainer = ({
             } else if (pred && !expectedSign && onStablePrediction) {
                 onStablePrediction(pred, conf);
             }
-        } catch (error) {
-            console.error('[CameraTrainer] Request failed', error);
+        } catch {
             setIsConnected(false);
             setModelStatus('error');
             setStatusMessage('AI connection failed. Please try again.');

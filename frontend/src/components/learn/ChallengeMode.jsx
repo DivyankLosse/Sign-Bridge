@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CameraTrainer } from './CameraTrainer';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { Zap, Timer } from 'lucide-react';
 import { useLearnTranscript } from '../../hooks/useLearnTranscript';
@@ -23,6 +24,7 @@ export const ChallengeMode = ({ level, subLevel, onComplete }) => {
             const randomSign = level.signs[Math.floor(Math.random() * level.signs.length)];
             q.push(randomSign);
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setChallengeQueue(q);
 
         timerRef.current = setInterval(() => {

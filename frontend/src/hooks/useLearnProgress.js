@@ -20,8 +20,8 @@ export const useLearnProgress = () => {
       if (stored) {
         return { ...DEFAULT_STATE, ...JSON.parse(stored) };
       }
-    } catch (e) {
-      console.warn('Failed to parse learning progress from localStorage', e);
+    } catch {
+      // Fall back to defaults if persisted progress is malformed.
     }
     return DEFAULT_STATE;
   });
@@ -34,35 +34,38 @@ export const useLearnProgress = () => {
   // Handle daily streak on initial hook load/mount
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
-    
-    if (progress.dailyStreak.lastDate !== today) {
-      setProgress(prev => {
-        let newCount = prev.dailyStreak.count;
-        const lastDate = prev.dailyStreak.lastDate;
-        
-        if (lastDate) {
-          const last = new Date(lastDate);
-          const current = new Date(today);
-          const diffTime = Math.abs(current - last);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-          
-          if (diffDays === 1) {
-            newCount += 1;
-          } else if (diffDays > 1) {
-            newCount = 1;
-          }
-        } else {
-            newCount = 1;
-        }
 
-        return {
-          ...prev,
-          dailyStreak: { lastDate: today, count: newCount },
-          lastPlayed: new Date().toISOString()
-        };
-      });
-    }
-  }, []); // Run once on mount
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setProgress((prev) => {
+      if (prev.dailyStreak.lastDate === today) {
+        return prev;
+      }
+
+      let newCount = prev.dailyStreak.count;
+      const lastDate = prev.dailyStreak.lastDate;
+
+      if (lastDate) {
+        const last = new Date(lastDate);
+        const current = new Date(today);
+        const diffTime = Math.abs(current - last);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          newCount += 1;
+        } else if (diffDays > 1) {
+          newCount = 1;
+        }
+      } else {
+        newCount = 1;
+      }
+
+      return {
+        ...prev,
+        dailyStreak: { lastDate: today, count: newCount },
+        lastPlayed: new Date().toISOString()
+      };
+    });
+  }, []);
 
   const completeSubLevel = (subLevelId, score = 0, xpEarned = 0) => {
     setProgress(prev => {

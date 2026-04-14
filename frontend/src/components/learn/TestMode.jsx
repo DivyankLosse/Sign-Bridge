@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CameraTrainer } from './CameraTrainer';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import { useLearnTranscript } from '../../hooks/useLearnTranscript';
@@ -7,7 +8,7 @@ import { useLearnTranscript } from '../../hooks/useLearnTranscript';
 export const TestMode = ({ level, subLevel, onComplete }) => {
     const signs = level.signs;
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [fails, setFails] = useState(0);
+    const [, setFails] = useState(0);
     const [showHint, setShowHint] = useState(false);
     const [isSuccessState, setIsSuccessState] = useState(false);
     const currentSign = signs[currentIndex];

@@ -1,11 +1,6 @@
 const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
-// Production safety: If no URL is provided, we should alert the user rather than silently failing to localhost
 const VITE_API_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
-
-if (!VITE_API_URL && import.meta.env.PROD) {
-    console.warn("⚠️ [Config] VITE_API_BASE_URL is undefined in production. Falling back to localhost, but this likely won't work on Render/Vercel.");
-}
 
 export const API_BASE_URL = VITE_API_URL || "http://localhost:8000";
 
@@ -17,9 +12,11 @@ export const WEBSOCKET_URL = import.meta.env.VITE_WS_URL || `${WS_PROTOCOL}//${w
 
 export const ENDPOINTS = {
   LOGIN: "/auth/login",
-  REGISTER: "/auth/register",
+  SIGNUP: "/auth/signup",
   ME: "/auth/me",
-  PREDICT: "/predict/sign",
+  PREDICT: "/asl/predict",
   TRANSLATE: "/translate/text",
   HISTORY: "/history",
+  SUPPORT: "/support",
+  USER_STATS: "/user/stats",
 };

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 // eslint-disable-next-line no-unused-vars
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Button from '../components/ui/Button';
 
 const Landing = () => {
-    const [demoOpen, setDemoOpen] = useState(false);
     const [activeDropdown, setActiveDropdown] = useState(null);
 
     // Shared motion variants for staggered scroll reveals
@@ -30,50 +29,10 @@ const Landing = () => {
 
     const supportedLanguages = [
         { code: 'ASL', name: 'American Sign Language' },
-        { code: 'BSL', name: 'British Sign Language' },
-        { code: 'KSL', name: 'Korean Sign Language (Beta)' },
-        { code: 'ISL', name: 'Indian Sign Language' }
     ];
 
     return (
         <div className="overflow-x-hidden text-[#e4e1ec] font-body bg-background selection:bg-primary/30">
-            {/* Demo Modal Overlay */}
-            <AnimatePresence>
-                {demoOpen && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-                        onClick={() => setDemoOpen(false)}
-                    >
-                        <motion.div 
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: -20 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-surface-container-high border border-white/10 rounded-2xl p-2 max-w-4xl w-full shadow-2xl relative"
-                        >
-                            <button 
-                                onClick={() => setDemoOpen(false)}
-                                className="absolute -top-12 right-0 text-white/50 hover:text-white flex items-center gap-2"
-                            >
-                                <span className="material-symbols-outlined material-filled">close</span> Close
-                            </button>
-                            <div className="aspect-video bg-black rounded-xl overflow-hidden relative flex items-center justify-center">
-                                {/* Placeholder Video Canvas */}
-                                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/10 opacity-30 animation-pulse"></div>
-                                <div className="z-10 text-center">
-                                    <span className="material-symbols-outlined text-6xl text-primary/80 mb-4 animate-bounce">play_circle</span>
-                                    <h3 className="text-xl font-bold">ASL Translation pipeline in action</h3>
-                                    <p className="text-sm text-white/50 mt-2">Simulated Demo Pipeline Running...</p>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
             {/* Top Navigation Shell */}
             <header className="fixed top-0 w-full z-50 bg-[#0B0B12]/80 backdrop-blur-xl border-b border-white/5">
                 <nav className="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
@@ -145,7 +104,6 @@ const Landing = () => {
                             </AnimatePresence>
                         </div>
 
-                        <button onClick={() => setDemoOpen(true)} className="text-on-surface-variant hover:text-white transition-colors font-headline font-bold tracking-tight">Try Demo</button>
                     </div>
                     <div className="flex items-center space-x-4">
                         <Link className="text-on-surface-variant hover:text-white transition-colors text-sm font-semibold" to="/login">Sign In</Link>
@@ -177,7 +135,7 @@ const Landing = () => {
                     >
                         <motion.div variants={fadeUp} className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-surface-container-high text-primary text-xs font-semibold mb-6 outline-variant/10 border border-white/5">
                             <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                            <span>New: Real-time ASL-to-Voice Beta</span>
+                            <span>ASL-first real-time translation</span>
                         </motion.div>
                         <motion.h1 variants={fadeUp} className="text-6xl md:text-7xl font-bold font-headline tracking-tighter leading-[0.95] text-on-surface mb-8">
                             Break <span className="gradient-text">Communication</span> Barriers with AI
@@ -189,9 +147,9 @@ const Landing = () => {
                             <Button to="/signup" className="rounded-full shadow-lg glow-soft">
                                 Start Translating Free
                             </Button>
-                            <Button variant="secondary" onClick={() => setDemoOpen(true)} className="rounded-full pr-6 pl-4 flex items-center space-x-2 bg-transparent border-white/20 hover:bg-white/5 text-white">
-                                <span className="material-symbols-outlined material-filled text-lg">play_circle</span>
-                                <span>Watch Demo</span>
+                            <Button variant="secondary" to="/login" className="rounded-full pr-6 pl-4 flex items-center space-x-2 bg-transparent border-white/20 hover:bg-white/5 text-white">
+                                <span className="material-symbols-outlined material-filled text-lg">login</span>
+                                <span>Sign In</span>
                             </Button>
                         </motion.div>
                     </motion.div>

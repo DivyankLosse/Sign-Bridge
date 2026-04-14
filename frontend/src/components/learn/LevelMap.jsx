@@ -1,10 +1,11 @@
 import React from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { Lock, CheckCircle2, ChevronRight, Play } from 'lucide-react';
 import { LEARNING_LEVELS } from '../../data/learnData';
 import { useLearnProgress } from '../../hooks/useLearnProgress';
 
-const LevelCard = ({ level, isUnlocked, isSelected, onClick, progress, onBack }) => {
+const LevelCard = ({ level, isUnlocked, isSelected, onClick, progress }) => {
     
     // Calculate how many sub-levels are completed for this level
     const completedCount = level.subLevels.filter(sl => progress.completedSubLevels.includes(sl.id)).length;
@@ -72,7 +73,7 @@ const LevelCard = ({ level, isUnlocked, isSelected, onClick, progress, onBack })
     );
 };
 
-export const LevelMap = ({ onSelectLevel, selectedLevel, onBack }) => {
+export const LevelMap = ({ onSelectLevel, selectedLevel }) => {
     const { progress, isLevelUnlocked } = useLearnProgress();
 
     if (selectedLevel) {
@@ -101,7 +102,6 @@ export const LevelMap = ({ onSelectLevel, selectedLevel, onBack }) => {
                         isSelected={selectedLevel?.id === level.id}
                         onClick={onSelectLevel}
                         progress={progress}
-                        onBack={onBack}
                     />
                 ))}
             </div>

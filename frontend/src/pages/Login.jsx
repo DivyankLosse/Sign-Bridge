@@ -83,12 +83,6 @@ export default function Login() {
           {isLoading ? 'Signing in...' : 'Sign in'}
         </Button>
       </form>
-
-      <div className="mt-8 flex items-center justify-between px-2">
-        <a href="#reset" className="text-sm font-medium text-muted hover:text-ink">
-          Forgot your password?
-        </a>
-      </div>
     </AuthLayout>
   );
 }

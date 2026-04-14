@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useHistory } from '../hooks/useHistory';
-import { useLearnTranscript } from '../hooks/useLearnTranscript';
-import { Clock, Search, Trash2, Calendar, BookOpen, Languages, Hand } from 'lucide-react';
+import { Clock, Search, Trash2, Calendar, Languages, Hand } from 'lucide-react';
 
 const TAB_CONFIG = [
     { id: 'sign-to-text', label: 'Sign to Text' },
@@ -9,30 +8,23 @@ const TAB_CONFIG = [
 ];
 
 const History = () => {
-    const { history, loading, deleteItem } = useHistory();
-    const { transcripts } = useLearnTranscript();
+    const { history, loading, error, deleteItem, fetchHistory } = useHistory();
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('sign-to-text');
 
-    const combinedHistory = [
-        ...history,
-        ...transcripts.map(item => ({...item, type: 'learn', created_at: item.timestamp, original_text: item.sign}))
-    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    useEffect(() => {
+        fetchHistory({ type: activeTab });
+    }, [activeTab, fetchHistory]);
 
-    const filteredHistory = combinedHistory.filter(item => {
-        if (activeTab === 'sign-to-text' && item.type !== 'sign-to-text' && item.type !== 'learn') {
-            return false;
-        }
-        if (activeTab === 'text-to-sign' && item.type !== 'text-to-sign') {
-            return false;
-        }
-        return (
-        (item.predicted_text || item.original_text || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredHistory = history
+        .filter((item) =>
+            (item.predicted_text || item.original_text || item.content || '')
+                .toLowerCase()
+                .includes(searchTerm.toLowerCase())
         );
-    });
 
     return (
-        <div className="p-8 max-w-5xl mx-auto animate-fade-in">
+        <div className="p-4 md:p-8 max-w-5xl mx-auto animate-fade-in pb-24 md:pb-8">
             <header className="mb-10">
                 <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
                     <Clock className="text-primary" />
@@ -75,25 +67,24 @@ const History = () => {
                         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                         Loading history...
                     </div>
+                ) : error ? (
+                    <div className="p-12 text-center text-rose-300">
+                        <h3 className="text-xl font-medium text-white mb-2">History unavailable</h3>
+                        <p className="text-sm text-gray-400">{error}</p>
+                    </div>
                 ) : filteredHistory.length > 0 ? (
                     <div className="divide-y divide-white/5">
                         {filteredHistory.map((item) => (
-                            <div key={item.id} className="p-6 hover:bg-white/5 transition-colors flex items-center justify-between group">
-                                <div>
+                            <div key={item.id} className="p-5 md:p-6 hover:bg-white/5 transition-colors flex flex-col gap-4 md:flex-row md:items-center md:justify-between group">
+                                <div className="min-w-0">
                                     <h3 className="text-xl font-medium text-white mb-1">
-                                        {item.predicted_text || item.original_text}
+                                        {item.predicted_text || item.original_text || item.content}
                                     </h3>
-                                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-400">
                                         <span className="flex items-center gap-1">
                                             <Calendar className="w-4 h-4" />
-                                            {new Date(item.created_at).toLocaleString()}
+                                            {new Date(item.timestamp || item.created_at).toLocaleString()}
                                         </span>
-                                        {item.type === 'learn' && (
-                                             <span className="flex items-center gap-1 bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded-md text-xs font-bold">
-                                                  <BookOpen className="w-3 h-3" />
-                                                  Learn Mode
-                                             </span>
-                                        )}
                                         {item.type === 'text-to-sign' && (
                                              <span className="flex items-center gap-1 bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-md text-xs font-bold">
                                                   <Languages className="w-3 h-3" />
@@ -111,10 +102,10 @@ const History = () => {
                                         </span>
                                     </div>
                                 </div>
-                                {item.id && item.type !== 'learn' && (
+                                {item.id && (
                                     <button 
                                         onClick={() => deleteItem(item.id)}
-                                        className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                                        className="self-end md:self-auto p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg md:opacity-0 md:group-hover:opacity-100 transition-all"
                                         title="Delete record"
                                     >
                                         <Trash2 className="w-5 h-5" />

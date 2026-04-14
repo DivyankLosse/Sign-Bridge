@@ -4,6 +4,7 @@ import { userService } from '../services/userService';
 export const useUserStats = (intervalMs = 60000) => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         let mounted = true;
@@ -12,11 +13,14 @@ export const useUserStats = (intervalMs = 60000) => {
                 const data = await userService.getStats();
                 if (mounted) {
                     setStats(data);
+                    setError('');
                     setLoading(false);
                 }
             } catch (err) {
-                console.error("Error fetching stats", err);
-                if (mounted) setLoading(false);
+                if (mounted) {
+                    setError(err.userMessage || 'Unable to load dashboard stats.');
+                    setLoading(false);
+                }
             }
         };
 
@@ -28,5 +32,5 @@ export const useUserStats = (intervalMs = 60000) => {
         };
     }, [intervalMs]);
 
-    return { stats, loading };
+    return { stats, loading, error };
 };

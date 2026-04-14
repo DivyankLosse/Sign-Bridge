@@ -9,8 +9,8 @@ export const useLearnTranscript = () => {
             if (stored) {
                 return JSON.parse(stored);
             }
-        } catch (e) {
-            console.error("Failed to parse transcripts from localStorage", e);
+        } catch {
+            // Ignore malformed persisted transcript data and start fresh.
         }
         return [];
     });

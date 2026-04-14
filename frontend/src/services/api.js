@@ -20,4 +20,22 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const status = error.response?.status;
+        if (status === 401) {
+            window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
+
+        const detail = error.response?.data?.detail;
+        error.userMessage =
+            typeof detail === 'string'
+                ? detail
+                : 'Something went wrong while talking to the server.';
+
+        return Promise.reject(error);
+    }
+);
+
 export default api;

@@ -30,8 +30,7 @@ export const useCamera = (onFrame, options = {}) => {
                 setIsStreaming(true);
                 setError(null);
             }
-        } catch (err) {
-            console.error("Camera access error:", err);
+        } catch {
             setError("Could not access camera. Please check permissions.");
         }
     }, [targetFps]);
@@ -86,8 +85,8 @@ export const useCamera = (onFrame, options = {}) => {
                             onFrame(getFrameData(), meta);
                         }
                     }
-                } catch (err) {
-                    console.error("Frame processing error:", err);
+                } catch {
+                    setError("There was a problem processing the camera frame.");
                 }
             }
             

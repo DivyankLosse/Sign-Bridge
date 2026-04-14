@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Any
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 from datetime import datetime
 from typing import List
 
@@ -49,6 +49,7 @@ class UserCorrection(BaseModel):
         allow_population_by_field_name = True
 
 class UserStats(BaseModel):
+    total_sessions: int
     total_translations: int
     active_time_minutes: int
     accuracy_rate: float
@@ -69,6 +70,7 @@ class HistoryItem(BaseModel):
     confidence: float = 1.0
     source: Optional[str] = None
     created_at: datetime
+    timestamp: datetime
 
 
 class HistoryListResponse(BaseModel):
@@ -92,3 +94,10 @@ class SupportRequest(BaseModel):
     email: EmailStr
     message: str
     created_at: datetime
+
+
+class TextTranslateResponse(BaseModel):
+    original_text: str
+    processed_words: List[str]
+    animations: List[str]
+    result: str

@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app.config import settings
+from app.schemas import TextTranslateResponse
 
 router = APIRouter(prefix="/translate", tags=["translate"])
 
@@ -78,17 +79,19 @@ def get_available_animations():
     }
 
 
-@router.post("/text")
+@router.post("/text", response_model=TextTranslateResponse)
 def translate_text(payload: TextTranslateRequest):
     text = payload.text.strip()
     if not text:
         raise HTTPException(status_code=400, detail="Text is required")
 
     labels = _translate_text_to_labels(text)
+    result = " ".join(labels)
     return {
         "original_text": text,
         "processed_words": labels,
         "animations": [_build_animation_url(label) for label in labels],
+        "result": result,
     }
 
 

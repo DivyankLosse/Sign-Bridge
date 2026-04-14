@@ -90,11 +90,13 @@ def get_stats(
 ):
     history_items = list(db.history.find({"user_id": current_user.id}))
     total = len(history_items)
+    sign_to_text_count = sum(1 for item in history_items if item.get("type") == "sign-to-text")
     average_confidence = (
         sum(float(item.get("confidence", 0)) for item in history_items) / total if total else 0.0
     )
     active_time_minutes = _estimate_active_minutes(history_items)
     return UserStats(
+        total_sessions=sign_to_text_count,
         total_translations=total,
         active_time_minutes=active_time_minutes,
         accuracy_rate=round(average_confidence * 100, 2),

@@ -11,6 +11,7 @@ router = APIRouter()
 
 
 def _serialize_history(document: dict) -> HistoryItem:
+    timestamp = document.get("timestamp") or document["created_at"]
     return HistoryItem(
         id=str(document["_id"]),
         user_id=document["user_id"],
@@ -19,6 +20,7 @@ def _serialize_history(document: dict) -> HistoryItem:
         confidence=float(document.get("confidence", 1.0)),
         source=document.get("source"),
         created_at=document["created_at"],
+        timestamp=timestamp,
     )
 
 
@@ -59,6 +61,7 @@ def create_history(
         "confidence": payload.confidence,
         "source": payload.source,
         "created_at": now,
+        "timestamp": now,
     }
     result = db.history.insert_one(document)
     document["_id"] = result.inserted_id

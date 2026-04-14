@@ -3,9 +3,7 @@ import { useCamera } from '../hooks/useCamera';
 import RecognitionOverlay from '../components/RecognitionOverlay';
 import PredictionDisplay from '../components/PredictionDisplay';
 import TranscriptPanel from '../components/TranscriptPanel';
-import { Play, Square } from 'lucide-react';
-import axios from 'axios';
-import { API_BASE_URL } from '../utils/constants';
+import { Play, RotateCcw, Square } from 'lucide-react';
 import api from '../services/api';
 
 const REQUESTS_PER_SECOND = 8;
@@ -22,6 +20,7 @@ const LiveRecognition = () => {
     const [isConnected, setIsConnected] = useState(true);
     const [detectorStatus, setDetectorStatus] = useState('idle');
     const [pipelineSource, setPipelineSource] = useState('server');
+    const [historySaveError, setHistorySaveError] = useState('');
     const lastPredRef = useRef(null);
     const isProcessingRef = useRef(false);
     const lastRequestAtRef = useRef(0);
@@ -45,8 +44,9 @@ const LiveRecognition = () => {
                 confidence: 1.0,
                 source: 'translator',
             });
-        } catch (error) {
-            console.error('Failed to persist translator history', error);
+            setHistorySaveError('');
+        } catch {
+            setHistorySaveError('Live transcript is working, but this entry could not be saved to history.');
         }
     }, []);
 
@@ -75,8 +75,7 @@ const LiveRecognition = () => {
                     handLandmarkerReadyRef.current = true;
                     setPipelineSource('browser');
                 }
-            } catch (error) {
-                console.error('[LiveRecognition] Failed to load browser hand detector', error);
+            } catch {
                 handLandmarkerRef.current = null;
                 handLandmarkerReadyRef.current = false;
                 setPipelineSource('server');
@@ -106,8 +105,7 @@ const LiveRecognition = () => {
             }
 
             return hand.flatMap((landmark) => [landmark.x, landmark.y, landmark.z]);
-        } catch (error) {
-            console.error('[LiveRecognition] Browser hand detection failed', error);
+        } catch {
             return undefined;
         }
     }, []);
@@ -139,21 +137,19 @@ const LiveRecognition = () => {
             }
 
             const fallbackFrameData = framePayload?.getFrameData?.();
-            const response = await axios.post(`${API_BASE_URL}/asl/predict`, {
+            const response = await api.post('/asl/predict', {
                 features: Array.isArray(browserLandmarks) && browserLandmarks.length === 63 ? browserLandmarks : fallbackFrameData
             });
             
             const data = response.data;
             if (data.error) {
                 if (data.error.includes("Server hand detector unavailable")) {
-                    console.error("Prediction error:", data.error);
                     setSystemError("Browser hand detector unavailable and server fallback is disabled.");
                     setDetectorStatus('error');
                     setIsConnected(true);
                     return;
                 }
                 if (!data.error.includes("No hands detected")) {
-                     console.error("Prediction error:", data.error);
                      setSystemError(data.error);
                      setDetectorStatus('error');
                      setIsConnected(true);
@@ -212,11 +208,6 @@ const LiveRecognition = () => {
                             }
                         ];
                         const trimmedEntries = nextEntries.slice(-MAX_TRANSCRIPT_ENTRIES);
-                        console.debug('[LiveRecognition] appending transcript entry', {
-                            prediction: currentPred,
-                            nextLength: trimmedEntries.length,
-                            latestEntry: trimmedEntries[trimmedEntries.length - 1]
-                        });
                         return trimmedEntries;
                     });
                     lastPredRef.current = currentPred;
@@ -226,9 +217,8 @@ const LiveRecognition = () => {
                 setSystemError(null);
             }
         } catch (error) {
-            console.error("Frame send error:", error);
             setIsConnected(false);
-            setSystemError("Failed to connect to backend server");
+            setSystemError(error.userMessage || "Failed to connect to backend server");
             setDetectorStatus('error');
         } finally {
             isProcessingRef.current = false;
@@ -241,10 +231,6 @@ const LiveRecognition = () => {
         jpegQuality: 0.92,
         lazyFrameData: true
     });
-
-    useEffect(() => {
-        console.debug('[LiveRecognition] transcript state updated', transcript);
-    }, [transcript]);
 
     useEffect(() => {
         localStorage.setItem('translatorSessionActive', isActive ? 'true' : 'false');
@@ -272,6 +258,17 @@ const LiveRecognition = () => {
             setIsActive(true);
             setDetectorStatus('searching');
         }
+    };
+
+    const resetSession = () => {
+        setTranscript([]);
+        setPredictionData(null);
+        setSystemError(null);
+        setHistorySaveError('');
+        setDetectorStatus(isActive ? 'searching' : 'idle');
+        stablePredictionRef.current = { value: null, count: 0 };
+        missCountRef.current = 0;
+        lastPredRef.current = null;
     };
 
     useEffect(() => {
@@ -316,12 +313,16 @@ const LiveRecognition = () => {
                 </div>
             </header>
 
-            {(cameraError || systemError) && (
+            {(cameraError || systemError || historySaveError) && (
                 <div className={`border px-4 py-3 rounded-xl mb-6 flex items-center gap-3 shrink-0 transition-colors ${
-                    systemError ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-red-500/10 border-red-500/20 text-red-400'
+                    systemError
+                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                        : historySaveError
+                            ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                            : 'bg-red-500/10 border-red-500/20 text-red-400'
                 }`}>
                     <span className="material-symbols-outlined">error</span>
-                    <span className="text-sm font-medium">{systemError || cameraError}</span>
+                    <span className="text-sm font-medium">{systemError || historySaveError || cameraError}</span>
                 </div>
             )}
 
@@ -402,6 +403,18 @@ const LiveRecognition = () => {
 
                 {/* Panel with strict null-guards */}
                 <div className="flex flex-col gap-4 overflow-visible md:overflow-hidden min-h-[260px]">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <button
+                            onClick={resetSession}
+                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                        >
+                            <RotateCcw className="h-4 w-4" />
+                            Reset session
+                        </button>
+                        <span className="text-xs text-gray-400">
+                            {transcript.length > 0 ? `${transcript.length} captured entries` : 'No saved entries in this session yet'}
+                        </span>
+                    </div>
                     {predictionData ? (
                         <PredictionDisplay data={predictionData} useNlp={false} />
                     ) : (
@@ -426,7 +439,7 @@ const LiveRecognition = () => {
                         </div>
                     )}
                     <div className="min-h-0 flex-1">
-                        <TranscriptPanel entries={transcript} />
+                        <TranscriptPanel entries={transcript} onClear={resetSession} />
                     </div>
                 </div>
             </div>

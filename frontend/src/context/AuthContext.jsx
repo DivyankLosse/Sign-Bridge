@@ -18,10 +18,9 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       if (token) {
         try {
-          const userData = await authService.getCurrentUser(token);
+          const userData = await authService.getCurrentUser();
           setUser(userData);
-        } catch (error) {
-          console.error('Failed to authenticate token:', error);
+        } catch {
           logout();
         }
       }
@@ -31,13 +30,22 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, [token]);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
   const login = async (email, password) => {
     const data = await authService.login(email, password);
     setToken(data.access_token);
     localStorage.setItem('token', data.access_token);
     
     // Fetch user profile immediately
-    const userData = await authService.getCurrentUser(data.access_token);
+    const userData = await authService.getCurrentUser();
     setUser(userData);
     return userData;
   };

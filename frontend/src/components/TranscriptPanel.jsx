@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { MessageSquare, Copy } from 'lucide-react';
+import { MessageSquare, Copy, Download, Trash2 } from 'lucide-react';
 
-const TranscriptPanel = ({ entries }) => {
+const TranscriptPanel = ({ entries, onClear }) => {
     const scrollRef = useRef(null);
     const normalizedEntries = useMemo(() => (
         Array.isArray(entries)
@@ -27,6 +27,17 @@ const TranscriptPanel = ({ entries }) => {
         navigator.clipboard.writeText(text);
     };
 
+    const downloadTranscript = () => {
+        const text = normalizedEntries.map((entry) => entry.text).join(' ');
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `sign-bridge-transcript-${new Date().toISOString()}.txt`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
     return (
         <div className="bg-white/5 border border-white/10 rounded-2xl flex flex-col flex-grow overflow-hidden shadow-lg h-full min-h-[260px]">
             <div className="p-4 border-b border-white/10 flex justify-between items-center shrink-0 bg-white/5">
@@ -34,13 +45,34 @@ const TranscriptPanel = ({ entries }) => {
                     <MessageSquare className="w-4 h-4 text-primary" />
                     Session Transcript
                 </h3>
-                <button 
-                    onClick={copyTranscript}
-                    className="text-gray-400 hover:text-white p-1 transition-colors"
-                    title="Copy full text"
-                >
-                    <Copy className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                    <button 
+                        onClick={copyTranscript}
+                        className="text-gray-400 hover:text-white p-1 transition-colors"
+                        title="Copy full text"
+                        disabled={normalizedEntries.length === 0}
+                    >
+                        <Copy className="w-4 h-4" />
+                    </button>
+                    <button
+                        onClick={downloadTranscript}
+                        className="text-gray-400 hover:text-white p-1 transition-colors"
+                        title="Download transcript"
+                        disabled={normalizedEntries.length === 0}
+                    >
+                        <Download className="w-4 h-4" />
+                    </button>
+                    {onClear && (
+                        <button
+                            onClick={onClear}
+                            className="text-gray-400 hover:text-white p-1 transition-colors"
+                            title="Clear transcript"
+                            disabled={normalizedEntries.length === 0}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
             </div>
             
             <div 

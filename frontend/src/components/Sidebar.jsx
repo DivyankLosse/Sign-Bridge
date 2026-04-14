@@ -1,9 +1,16 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
     const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
     return (
         <aside className="h-screen w-72 fixed left-0 border-r border-white/10 bg-surface-container-low/30 backdrop-blur-2xl flex flex-col p-6 space-y-4 z-40 hidden md:flex">
             <div className="mb-8 px-2">
@@ -17,10 +24,10 @@ const Sidebar = () => {
                     </div>
                 </div>
             </div>
-            <button className="w-full py-4 px-6 mb-6 rounded-full bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-fixed font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all">
+            <NavLink to="/translator" className="w-full py-4 px-6 mb-6 rounded-full bg-gradient-to-r from-primary-container to-secondary-container text-on-primary-fixed font-bold flex items-center justify-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all">
                 <span className="material-symbols-outlined text-xl">add</span>
-                New Translation
-            </button>
+                Start Live Translation
+            </NavLink>
             <nav className="flex-grow space-y-2">
                 <NavLink to="/dashboard" className={({isActive}) => `flex items-center gap-3 px-4 py-3 rounded-full transition-all group ${isActive ? 'bg-white/10 text-primary-container shadow-[0_0_15px_rgba(139,92,246,0.2)] font-medium' : 'text-on-surface-variant/70 hover:text-on-surface hover:bg-white/5'}`}>
                     <span className="material-symbols-outlined">dashboard</span>
@@ -61,7 +68,7 @@ const Sidebar = () => {
                             <p className="text-sm font-medium text-white truncate w-28">{user?.full_name || 'User'}</p>
                         </div>
                     </div>
-                    <button onClick={logout} className="text-gray-400 hover:text-red-400 p-1 transition-colors shrink-0" title="Logout">
+                    <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 p-1 transition-colors shrink-0" title="Logout">
                         <span className="material-symbols-outlined text-lg">logout</span>
                     </button>
                 </div>

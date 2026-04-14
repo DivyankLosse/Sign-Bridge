@@ -23,12 +23,8 @@ export const authService = {
     return response.data;
   },
 
-  async getCurrentUser(token) {
-    const response = await api.get('/auth/me', token ? {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    } : undefined);
+  async getCurrentUser() {
+    const response = await api.get('/auth/me');
     return response.data;
   },
 };

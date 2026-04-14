@@ -14,7 +14,7 @@ from app.translate import router as translate_router
 from app.user import router as user_router
 import app.asl.predict as asl_predict
 
-app = FastAPI(title="Papago Sign API", version="1.0.0")
+app = FastAPI(title="Sign Bridge API", version="1.0.0")
 
 @app.on_event("startup")
 def startup_event():
@@ -43,7 +43,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,6 +61,7 @@ def read_root():
     is_loaded = asl_predict.model is not None
     return {
         "message": "Welcome to Papago Sign API", 
+        "app": "Sign Bridge",
         "model_loaded": is_loaded, 
         "environment": settings.ENVIRONMENT
     }

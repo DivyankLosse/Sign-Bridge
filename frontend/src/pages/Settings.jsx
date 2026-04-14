@@ -20,8 +20,8 @@ const Settings = () => {
             try {
                 const prefs = await userService.getPreferences();
                 if (prefs) setPreferences(prefs);
-            } catch (err) {
-                console.error("Failed to load preferences", err);
+            } catch {
+                // Keep defaults if preferences cannot be loaded.
             }
         };
         fetchPrefs();
@@ -34,16 +34,16 @@ const Settings = () => {
             await userService.updatePreferences(preferences);
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
-        } catch (err) {
-            console.error("Save failed", err);
+        } catch {
+            setSaved(false);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="p-8 max-w-4xl mx-auto animate-fade-in">
-            <header className="mb-10 flex justify-between items-center">
+        <div className="p-4 md:p-8 max-w-4xl mx-auto animate-fade-in pb-24 md:pb-8">
+            <header className="mb-10 flex flex-col gap-4 md:flex-row md:justify-between md:items-center">
                 <div>
                     <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
                         <SettingsIcon className="text-primary" />
@@ -105,8 +105,6 @@ const Settings = () => {
                                     className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-primary/50"
                                 >
                                     <option value="asl">American Sign Language (ASL)</option>
-                                    <option value="isl">Indian Sign Language (ISL)</option>
-                                    <option value="bsl">British Sign Language (BSL)</option>
                                 </select>
                             </div>
                             

@@ -1,4 +1,5 @@
 import React from 'react';
+// eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, Camera, Crosshair, Zap, Lock, CheckCircle2 } from 'lucide-react';
 import { useLearnProgress } from '../../hooks/useLearnProgress';
